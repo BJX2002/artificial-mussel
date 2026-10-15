@@ -4,17 +4,32 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#073b5f">
-  <meta name="description" content="A bilingual evidence-based marine monitoring game for Primary 4–5 learners.">
-  <title>藍灣監測任務｜Blue Bay Monitoring Mission</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta name="description" content="人工青口出動！選擇電腦版或 iPad 版，開始藍灣海洋監測任務。">
+  <title>人工青口出動！選擇試玩版本</title>
+  <link rel="stylesheet" href="launcher.css?v=1">
 </head>
 <body>
-  <a class="skip-link" href="#game-screen">Skip to game</a>
-  <main id="app" aria-live="polite"></main>
-  <dialog id="evidence-dialog" class="evidence-dialog"></dialog>
-  <dialog id="placement-dialog" class="placement-dialog"></dialog>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+  <main class="launcher-shell">
+    <div class="launcher-backdrop" aria-hidden="true"></div>
+    <section class="launcher-card" aria-labelledby="launcher-title">
+      <div class="launcher-brand"><span>◎</span><div><b>人工青口出動！</b><small>藍灣海洋監測任務</small></div></div>
+      <p class="launcher-kicker">老闆試玩入口</p>
+      <h1 id="launcher-title">你想用哪一個版本？</h1>
+      <p class="launcher-lead">兩個版本的任務內容完全相同，版面和操作會配合裝置自動調整。</p>
+      <div class="version-grid">
+        <a class="version-card desktop-card" href="desktop.html">
+          <span class="device-icon" aria-hidden="true">▰</span>
+          <div><small>滑鼠與大螢幕</small><strong>開啟電腦版</strong><p>適合筆電、桌上型電腦和會議室螢幕。</p></div>
+          <b aria-hidden="true">→</b>
+        </a>
+        <a class="version-card ipad-card" href="ipad.html">
+          <span class="device-icon" aria-hidden="true">▭</span>
+          <div><small>橫屏觸控</small><strong>開啟 iPad 版</strong><p>加大點按區，建議把 iPad 橫放後開始。</p></div>
+          <b aria-hidden="true">→</b>
+        </a>
+      </div>
+      <div class="launcher-note"><span>約 10 分鐘</span><span>繁中／簡中／English</span><span>可開啟語音朗讀</span></div>
+    </section>
+  </main>
 </body>
 </html>

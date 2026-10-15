@@ -1,0 +1,38 @@
+/* iPad edition: the same mission, tuned for landscape touch. */
+html.mode-ipad,body.mode-ipad { width:100%; min-height:100%; overscroll-behavior:none; -webkit-text-size-adjust:100%; }
+.mode-ipad button,.mode-ipad a { touch-action:manipulation; -webkit-tap-highlight-color:rgba(255,198,77,.34); }
+.mode-ipad button { min-width:48px; min-height:48px; }
+
+@media (orientation:landscape) {
+  .mode-ipad .g3-hud { grid-template-columns:minmax(155px,.7fr) minmax(470px,2.3fr) auto; min-height:104px; padding:.4rem max(.55rem,env(safe-area-inset-right)) .4rem max(.55rem,env(safe-area-inset-left)); }
+  .mode-ipad .g3-logo { flex-basis:43px; width:43px; height:43px; }.mode-ipad .g3-brand strong { font-size:.82rem; }.mode-ipad .g3-brand small { font-size:.58rem; }
+  .mode-ipad .g3-center { gap:.25rem; }.mode-ipad .g3-progress > div { padding:.19rem .25rem; }.mode-ipad .g3-progress strong { display:block; font-size:.56rem; }.mode-ipad .g3-progress span { flex-basis:22px; width:22px; height:22px; }
+  .mode-ipad .g3-mission { padding:.34rem .55rem; }.mode-ipad .g3-mission small { font-size:.54rem; }.mode-ipad .g3-mission strong { font-size:.73rem; }
+  .mode-ipad .g3-tools { grid-column:3; grid-row:1; }.mode-ipad .g3-tools button { width:46px; height:46px; }.mode-ipad .g3-samples { display:none; }
+  .mode-ipad .g3-screen,.mode-ipad .world-scene,.mode-ipad .workbench-world,.mode-ipad .flow-world,.mode-ipad .deploy-world,.mode-ipad .evidence-world,.mode-ipad .time-world,.mode-ipad .lab-world,.mode-ipad .decision-world,.mode-ipad .complete-world { height:calc(100svh - 104px); min-height:0; }
+
+  .mode-ipad .v6-knowledge { grid-template-columns:38% 62%; }.mode-ipad .knowledge-card { width:96%; max-height:calc(100% - .7rem); padding:.8rem .9rem; }.mode-ipad .knowledge-card header h2 { font-size:1.35rem; }.mode-ipad .knowledge-card > p { margin:.5rem 0; font-size:.8rem; }.mode-ipad .knowledge-visual { height:132px; }.mode-ipad .knowledge-key { margin-top:.42rem; padding:.48rem .58rem; }.mode-ipad .knowledge-key strong { font-size:.84rem; }.mode-ipad .knowledge-footer { margin-top:.42rem; }.mode-ipad .knowledge-card .metal-guard { margin-top:.4rem; padding:.44rem .55rem; font-size:.72rem; }
+
+  .mode-ipad .v5-build .build-copy { top:2%; left:2%; width:59%; }.mode-ipad .v5-build .build-copy p { font-size:.8rem; }.mode-ipad .v5-build .assembly-zone { top:17%; left:2%; width:59%; height:52%; }.mode-ipad .v5-build .assembly-zone .device-model.large { transform:scale(.74); }.mode-ipad .v5-build .parts-tray { top:2%; right:1.5%; width:37%; max-height:96%; padding:.65rem; gap:.42rem; }.mode-ipad .v5-build .parts-tray h2 { font-size:1.2rem; }.mode-ipad .v5-build .part-card { min-height:66px; padding:.42rem; }.mode-ipad .v5-build .part-card small { font-size:.64rem; }.mode-ipad .v5-build .mark-picker { bottom:1.5%; left:2%; width:59%; padding:.65rem; }.mode-ipad .component-guide p { font-size:.68rem; }
+
+  .mode-ipad .v6-flow { grid-template-columns:55% 45%; }.mode-ipad .v6-flow .tank .device-model.large { left:7%; width:86%; transform:scale(.78); transform-origin:left center; }.mode-ipad .v6-flow .flow-console { margin:.45rem; padding:.75rem; }.mode-ipad .v6-flow .flow-console h2 { font-size:1.6rem; }.mode-ipad .v6-flow .principle-path article { min-height:48px; padding:.42rem .5rem; }.mode-ipad .v6-flow .principle-path span,.mode-ipad .v6-flow .scale-note { font-size:.7rem; }
+
+  .mode-ipad .deploy-world,.mode-ipad .v6-evidence { grid-template-columns:58% 42%; }.mode-ipad .deploy-drawer,.mode-ipad .evidence-tray { margin:.45rem; padding:.75rem; }.mode-ipad .deploy-drawer h2,.mode-ipad .evidence-map-wrap h2 { font-size:1.45rem; }.mode-ipad .research-station { min-width:132px; }.mode-ipad .map-site { max-width:145px; }.mode-ipad .device-crate { gap:.35rem; }.mode-ipad .auto-deploy-note { padding:.5rem; }
+
+  .mode-ipad .v6-time { grid-template-columns:54% 46%; }.mode-ipad .time-dashboard { gap:.5rem; padding:.55rem; }.mode-ipad .time-dashboard .time-wheel { width:190px; height:190px; }.mode-ipad .time-dashboard .time-wheel::before { inset:20px; }.mode-ipad .time-dashboard .week-observation { padding:.6rem; }.mode-ipad .time-dashboard .field-note { padding:.75rem; }.mode-ipad .storm-options button { min-height:66px; padding:.42rem; }
+
+  .mode-ipad .v6-lab { padding:.5rem; }.mode-ipad .lab-workspace { grid-template-columns:58% 42%; gap:.55rem; }.mode-ipad .v6-lab .lab-device { left:3%; transform:scale(.7); transform-origin:left center; }.mode-ipad .v6-lab .analyser,.mode-ipad .v6-lab .analyser.next-target { top:14%; right:2%; transform:scale(.68); transform-origin:right top; }.mode-ipad .v6-lab .transfer-arrow { left:47%; }.mode-ipad .v6-lab .lab-instructions { padding:.7rem; }.mode-ipad .v6-lab .lab-instructions h2 { font-size:1.15rem; }.mode-ipad .v6-lab .lab-instructions li { padding:.4rem; font-size:.7rem; }
+
+  .mode-ipad .v6-evidence .evidence-map-wrap > h2 { font-size:1.2rem; }.mode-ipad .case-header { grid-template-columns:48px minmax(0,1fr); gap:.55rem; }.mode-ipad .case-header > span { width:48px; height:48px; }.mode-ipad .case-header small { font-size:.68rem; }.mode-ipad .case-header p { font-size:.82rem; }.mode-ipad .evidence-files { gap:.35rem; }.mode-ipad .evidence-file { min-width:0; }.mode-ipad .v6-evidence .signal-legend { font-size:.72rem; }
+
+  .mode-ipad .v6-decision,.mode-ipad .v6-complete { grid-template-columns:46% 54%; }.mode-ipad .v6-decision { padding:.55rem; }.mode-ipad .plan-choice-group button { min-height:62px; }.mode-ipad .v6-complete .mission-complete { margin:.4rem; padding:.75rem; }.mode-ipad .v6-complete .mission-complete h1 { font-size:2rem; }.mode-ipad .player-report { grid-template-columns:72px 1fr; }.mode-ipad .mini-player { transform:scale(.82); transform-origin:center; }
+}
+
+@media (orientation:portrait) {
+  .mode-ipad { overflow:auto; }
+  .mode-ipad .g3-screen { height:auto; overflow:visible; }
+  .mode-ipad .g3-hud { position:sticky; top:0; }
+  .mode-ipad .v6-knowledge,.mode-ipad .flow-world,.mode-ipad .deploy-world,.mode-ipad .v6-evidence,.mode-ipad .v6-time,.mode-ipad .decision-world,.mode-ipad .complete-world { grid-template-columns:1fr; height:auto; }
+  .mode-ipad .knowledge-sample,.mode-ipad .tank,.mode-ipad .mission-map,.mode-ipad .evidence-map-wrap,.mode-ipad .time-scene,.mode-ipad .real-device-photo { min-height:54svh; }
+  .mode-ipad .knowledge-card,.mode-ipad .flow-console,.mode-ipad .deploy-drawer,.mode-ipad .evidence-tray,.mode-ipad .time-dashboard,.mode-ipad .mission-complete { max-height:none; }
+}

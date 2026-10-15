@@ -1,0 +1,22 @@
+:root { --deep:#073b5f; --sea:#079aad; --mint:#56d0c6; --yellow:#ffc84d; --paper:#fffdf6; --ink:#073b5f; }
+* { box-sizing:border-box; }
+html,body { min-width:320px; min-height:100%; margin:0; }
+body { color:var(--ink); background:#0a6d83; font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif; }
+.launcher-shell { position:relative; display:grid; place-items:center; min-height:100svh; padding:clamp(1rem,4vw,3.5rem); overflow:hidden; }
+.launcher-backdrop { position:absolute; inset:0; background:linear-gradient(90deg,rgba(3,42,63,.92),rgba(3,64,82,.42)),url("assets/blue-bay-mission.png") center/cover; transform:scale(1.02); }
+.launcher-backdrop::after { content:""; position:absolute; inset:0; background:radial-gradient(circle at 78% 18%,rgba(86,208,198,.3),transparent 28%); }
+.launcher-card { position:relative; z-index:1; width:min(1040px,100%); padding:clamp(1.25rem,3vw,2.5rem); border:1px solid rgba(255,255,255,.68); border-radius:32px; background:rgba(255,253,246,.94); box-shadow:0 28px 80px rgba(0,31,48,.34); backdrop-filter:blur(14px); }
+.launcher-brand { display:flex; align-items:center; gap:.75rem; }
+.launcher-brand > span { display:grid; place-items:center; width:54px; height:54px; border:3px solid white; border-radius:16px; color:white; background:var(--mint); font-size:1.65rem; box-shadow:0 7px 18px rgba(4,84,96,.2); }
+.launcher-brand b,.launcher-brand small { display:block; }.launcher-brand b { font-size:1.15rem; }.launcher-brand small { margin-top:.08rem; color:#56717b; font-weight:700; }
+.launcher-kicker { display:inline-block; margin:1.45rem 0 .45rem; padding:.35rem .62rem; border-radius:999px; color:#785814; background:#ffe69e; font-size:.82rem; font-weight:950; }
+h1 { max-width:780px; margin:0; font-size:clamp(2rem,5vw,4.1rem); line-height:1.05; letter-spacing:-.03em; }
+.launcher-lead { max-width:720px; margin:.7rem 0 1.5rem; color:#526c76; font-size:clamp(1rem,1.7vw,1.25rem); line-height:1.55; }
+.version-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+.version-card { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:1rem; min-height:174px; padding:1.2rem; border:3px solid transparent; border-radius:23px; color:var(--ink); background:#e9f7f6; box-shadow:0 10px 24px rgba(3,55,82,.12); text-decoration:none; transition:transform .2s,border-color .2s,box-shadow .2s; }
+.version-card:hover,.version-card:focus-visible { transform:translateY(-5px); border-color:var(--yellow); box-shadow:0 18px 34px rgba(3,55,82,.2); outline:0; }
+.ipad-card { background:#fff5d5; }.device-icon { display:grid; place-items:center; width:72px; height:72px; border-radius:20px; color:white; background:var(--sea); font-size:2.2rem; }
+.ipad-card .device-icon { background:#7150a2; }.version-card small,.version-card strong,.version-card p { display:block; }.version-card small { color:var(--sea); font-size:.8rem; font-weight:950; }.version-card strong { margin:.15rem 0; font-size:clamp(1.25rem,2.2vw,1.75rem); }.version-card p { margin:0; color:#5d747c; line-height:1.45; }.version-card > b { font-size:1.8rem; }
+.launcher-note { display:flex; flex-wrap:wrap; gap:.5rem 1.2rem; margin-top:1.25rem; color:#5b727b; font-size:.82rem; font-weight:800; }.launcher-note span::before { content:"✓"; margin-right:.35rem; color:#07956d; }
+@media (max-width:760px) { .launcher-shell { align-items:start; }.launcher-card { border-radius:24px; }.version-grid { grid-template-columns:1fr; }.version-card { min-height:145px; }.launcher-note { display:grid; } }
+@media (prefers-reduced-motion:reduce) { * { transition:none!important; } }

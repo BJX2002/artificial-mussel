@@ -38,7 +38,19 @@ if (foundForbidden.length) {
   console.log(foundForbidden);
 }
 
-for (const asset of ["index.html", "app.js", "data.js", "styles.css", path.join("assets", "blue-bay-mission.png")]) {
+for (const asset of [
+  "index.html",
+  "desktop.html",
+  "ipad.html",
+  "app.js",
+  "data.js",
+  "styles.css",
+  "launcher.css",
+  "ipad.css",
+  path.join("assets", "blue-bay-mission.png"),
+  path.join("assets", "artificial-mussel-real.jpg"),
+  path.join("assets", "artificial-mussel-structure.jpg")
+]) {
   const assetPath = path.join(root, "dist", asset);
   if (!fs.existsSync(assetPath) || fs.statSync(assetPath).size === 0) {
     failed = true;
