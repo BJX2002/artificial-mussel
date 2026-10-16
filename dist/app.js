@@ -8,6 +8,7 @@
   const SCENES = ["HOME", "ALERT", "LENS", "BUILD", "FLOW", "DEPLOY", "TIME", "LAB", "EVIDENCE", "DECISION", "COMPLETE"];
   let timer = null;
   let speechRun = 0;
+  let speechVoices = [];
   let dragPayload = null;
   let lensDrag = null;
 
@@ -309,19 +310,70 @@
     return [];
   }
   function clearSpeech() { document.querySelectorAll(".is-speaking").forEach(el => el.classList.remove("is-speaking")); }
-  function speak(chunks = narration(), feedback = false) {
+  function rememberSpeechVoices() {
+    if (!("speechSynthesis" in window)) return [];
+    const available = speechSynthesis.getVoices();
+    if (available.length) speechVoices = available;
+    return speechVoices;
+  }
+  function pickSpeechVoice(voices, locale) {
+    const requested = locale.toLowerCase();
+    const lang = voice => (voice.lang || "").toLowerCase().replace("_","-");
+    const name = voice => (voice.name || "").toLowerCase();
+    const exact = voices.find(voice => lang(voice) === requested);
+    if (exact) return exact;
+
+    // Cantonese must never fall back to a generic zh-* voice: on iPad that is
+    // commonly Mandarin. Some engines label Cantonese as yue-HK instead.
+    if (requested === "zh-hk") {
+      return voices.find(voice => /^yue(?:-|$)/.test(lang(voice))) ||
+        voices.find(voice => /cantonese|粵語|粤语|sin[- ]?ji|hiumaan|hiugaai/.test(name(voice))) ||
+        null;
+    }
+    if (requested === "zh-cn") {
+      return voices.find(voice => /^(?:cmn-cn|zh-sg)$/.test(lang(voice))) ||
+        voices.find(voice => /mandarin|普通話|普通话|ting[- ]?ting/.test(name(voice))) ||
+        voices.find(voice => /^zh(?:-|$)/.test(lang(voice))) ||
+        null;
+    }
+    if (requested.startsWith("en-")) return voices.find(voice => /^en(?:-|$)/.test(lang(voice))) || null;
+    return voices.find(voice => lang(voice).split("-")[0] === requested.split("-")[0]) || null;
+  }
+  function waitForSpeechVoices(locale) {
+    const current = rememberSpeechVoices();
+    if (pickSpeechVoice(current,locale)) return Promise.resolve(current);
+    return new Promise(resolve => {
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        speechSynthesis.removeEventListener("voiceschanged",onVoicesChanged);
+        resolve(rememberSpeechVoices());
+      };
+      const onVoicesChanged = () => {
+        const available = rememberSpeechVoices();
+        if (available.length && (pickSpeechVoice(available,locale) || locale.toLowerCase() !== "zh-hk")) finish();
+      };
+      speechSynthesis.addEventListener("voiceschanged",onVoicesChanged);
+      setTimeout(finish,1200);
+    });
+  }
+  async function speak(chunks = narration(), feedback = false) {
     speechRun += 1; const run = speechRun;
     if (!("speechSynthesis" in window)) return;
     speechSynthesis.cancel(); clearSpeech();
     if (state.voiceMuted || !chunks.length) return;
-    const voices = speechSynthesis.getVoices(); const prefix = state.voiceLocale.toLowerCase().split("-")[0]; let index = 0;
+    const requestedLocale = state.voiceLocale;
+    const voices = await waitForSpeechVoices(requestedLocale);
+    if (run !== speechRun || state.voiceMuted) return;
+    const selectedVoice = pickSpeechVoice(voices,requestedLocale); let index = 0;
     const next = () => {
       if (run !== speechRun || index >= chunks.length) { clearSpeech(); return; }
       clearSpeech();
       const target = feedback ? document.querySelector("[data-feedback]") : document.querySelector(`[data-speech="${index}"]`) || document.querySelector(".deploy-drawer p, .evidence-tray p, h2");
       target?.classList.add("is-speaking");
-      const u = new SpeechSynthesisUtterance(chunks[index]); u.lang = state.voiceLocale; u.rate = state.uiLocale === "en" ? .96 : .88;
-      u.voice = voices.find(v => v.lang.toLowerCase() === state.voiceLocale.toLowerCase()) || voices.find(v => v.lang.toLowerCase().startsWith(prefix)) || null;
+      const u = new SpeechSynthesisUtterance(chunks[index]); u.lang = selectedVoice?.lang || requestedLocale; u.rate = state.uiLocale === "en" ? .96 : .88;
+      u.voice = selectedVoice;
       u.onend = u.onerror = () => { index += 1; next(); }; speechSynthesis.speak(u);
     };
     next();
@@ -424,6 +476,10 @@
     dragPayload=null;
   });
   scienceDialog.addEventListener("click", event => { if(event.target===scienceDialog)scienceDialog.close(); });
+  if ("speechSynthesis" in window) {
+    rememberSpeechVoices();
+    speechSynthesis.addEventListener("voiceschanged",rememberSpeechVoices);
+  }
   window.addEventListener("beforeunload",()=>{if(timer)clearTimeout(timer);if("speechSynthesis" in window)speechSynthesis.cancel();});
   render();
 })();

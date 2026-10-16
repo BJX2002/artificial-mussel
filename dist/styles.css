@@ -588,6 +588,43 @@ button:disabled { cursor: default; }
   .v6-lab .analyser,.v6-lab .analyser.next-target { position: absolute; top: 16%; right: 5%; }
 }
 
+/* Desktop readability: enlarge the remaining helper labels and explanatory copy. */
+@media (min-width: 901px) {
+  .mode-desktop .g3-progress strong,
+  .mode-desktop .g3-mission small,
+  .mode-desktop .g3-samples > small { font-size: .7rem; }
+  .mode-desktop .g3-mission strong { font-size: .92rem; }
+  .mode-desktop .part-card small,
+  .mode-desktop .component-guide p,
+  .mode-desktop .lab-coach,
+  .mode-desktop .lab-instructions li,
+  .mode-desktop .fair-compare p,
+  .mode-desktop .evidence-file header b,
+  .mode-desktop .file-result > b,
+  .mode-desktop .player-report strong,
+  .mode-desktop .player-report p,
+  .mode-desktop .v6-complete .takeaways article { font-size: .82rem; }
+  .mode-desktop .component-guide small,
+  .mode-desktop .rack-item small,
+  .mode-desktop .printed-result small,
+  .mode-desktop .evidence-file header small,
+  .mode-desktop .file-result small,
+  .mode-desktop .player-report small,
+  .mode-desktop .photo-callout { font-size: .7rem; }
+  .mode-desktop .impact-demo > small,
+  .mode-desktop .impact-caption,
+  .mode-desktop .radio-clue small,
+  .mode-desktop .radio-path span,
+  .mode-desktop .material-choices span,
+  .mode-desktop .auto-deploy-note small,
+  .mode-desktop .auto-deploy-note em,
+  .mode-desktop .week-observation small,
+  .mode-desktop .batch-machine article small,
+  .mode-desktop .fair-compare small { font-size: .72rem; }
+  .mode-desktop .radio-clue p,
+  .mode-desktop .capture-label strong { font-size: .8rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
