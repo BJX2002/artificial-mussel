@@ -4,13 +4,19 @@
   const { strings, locations } = window.GAME_DATA;
   const app = document.getElementById("app");
   const scienceDialog = document.getElementById("science-dialog");
-  const STORAGE_KEY = "artificial-mussel-preferences-v9";
-  const SCENES = ["HOME", "ALERT", "LENS", "BUILD", "FLOW", "DEPLOY", "TIME", "LAB", "EVIDENCE", "DECISION", "COMPLETE"];
+  const STORAGE_KEY = "artificial-mussel-preferences-v10";
+  const SCENES = ["HOME", "ALERT", "WHY", "LENS", "BUILD", "FLOW", "DEPLOY", "TIME", "LAB", "EVIDENCE", "DECISION", "COMPLETE"];
   let timer = null;
   let speechRun = 0;
   let speechVoices = [];
   let dragPayload = null;
   let lensDrag = null;
+  let pointerDrag = null;
+  let suppressClickUntil = 0;
+  let narrationActive = false;
+  let speechCanSkip = false;
+  let speechSkipTimer = null;
+  let speechFallbackTimer = null;
 
   const HANT = {
     title: "人工青口出動！", subtitle: "藍灣海洋監測任務", role: "小小海洋工程師",
@@ -70,7 +76,26 @@
     clueBoardTitle: "人工青口的海水日記", weekAction: "推進兩星期", stormChoiceHint: "三個方案都看似有用；想一想哪個能保留公平比較。",
     evidenceTitle: "把三份調查檔案釘回正確地點", placeHint: "拖動紙張到相同地點；點擊紙張也可以自動歸檔。", evidenceFile: "藍灣調查檔案", evidenceStamp: "儀器分析完成", evidenceFiled: "已釘到地圖", chooseHighest: "三份檔案都已釘好。哪一個地點的訊號較高？", evidenceReady: "三份檔案已歸位，現在比較訊號格。",
     decisionTitle: "下一步怎樣調查，才能保留比較又找到更多線索？", decisionDeclare: "在河口多放兩隻裝置，暫停其他地點", decisionMoreHarbor: "保留三個比較點，在河口上游加一點，並核對港口與暴雨記錄", decisionMoreOffshore: "保留三個比較點，在河口上游加一點，並繼續比較外海", decisionStop: "下個月只重測河口，其他地點先不監測", decisionWrongDeclare: "增加河口裝置看似更快，但失去其他地點後，就難以判斷差別是否只出現在河口。", decisionWrongStop: "只重測河口可以看到時間變化，卻失去了同一時間的地點比較。", decisionGood: "好計劃！你保留比較地點，又增加上游線索和事件記錄，能更有系統地縮小調查範圍。",
-    playerSpeaking: "小小監測員報告", photoCap: "帶孔保護蓋", photoCollector: "內部收集材料", photoTube: "透明塑膠管"
+    playerSpeaking: "小小監測員報告", photoCap: "帶孔保護蓋", photoCollector: "內部收集材料", photoTube: "透明塑膠管",
+    voiceSpeed: "朗讀速度", speedSlow: "慢 0.8×", speedNormal: "標準 1.0×", speedFast: "快 1.2×",
+    speakingNow: "正在朗讀，聽完再繼續……", skipSpeech: "跳過朗讀", voiceUnavailable: "這部裝置未提供所選語音，已解除操作限制。",
+    alertIncoming: "監測浮標傳來即時警報。拿起通訊器，聽聽研究站發現了甚麼。",
+    alert1: "監測浮標剛剛把河口的一次異常金屬訊號傳回研究站。",
+    alert2: "浮標負責即時量度和發出提醒；但一次警報不能告訴我們幾星期內發生過甚麼。",
+    alertQuestion: "我們還需要一種留在海裡、長期收集線索的工具。",
+    alertContinue: "認識兩種監測工具",
+    whyName: "為甚麼叫人工青口", whyMission: "分清即時警報與長期收集",
+    whyTitle: "它像青口一樣，長時間接觸海水",
+    whyIntro: "真正的青口會不斷接觸和過濾周圍的海水。人工青口借用了這個概念，讓合適的材料在海中慢慢收集物質線索。",
+    buoyRoleTitle: "監測浮標：即時傳訊", buoyRoleBody: "感應器量度當刻狀況，利用通訊設備把數據傳回研究站，異常時可以提醒人員。",
+    musselRoleTitle: "人工青口：長期收集", musselRoleBody: "不用電、沒有通訊器、不會報警。它安靜地留在海裡數星期，回收後才由實驗室儀器量度。",
+    roleRule: "記住：浮標負責『現在發生甚麼』；人工青口幫我們回看『這段時間留下了甚麼』。",
+    whyAction: "尋找看不見的線索",
+    buoyMapLabel: "即時監測浮標", buoySending: "傳送數據", musselQuietLabel: "人工青口：收集中，不傳訊",
+    priorityTitle: "分析結果出來了！按訊號由高至低安排深入調查",
+    priorityPrompt: "這些是回收後由實驗室量出的結果，不是人工青口在海中發出的警報。先點最高，再點次高。",
+    priorityProgress: "已安排 {n}/3", priorityCorrect: "判斷正確！下一個地點是哪裡？", priorityWrong: "先比較尚未安排地點的訊號格，選擇最高的一個。",
+    priorityDone: "三個地點已排好次序。現在決定怎樣部署下一輪，才不會失去比較。", followupTitle: "選擇下一輪深入調查方案"
   });
 
   Object.assign(EN, {
@@ -96,7 +121,26 @@
     clueBoardTitle: "The Artificial Mussel's sea diary", weekAction: "Advance two weeks", stormChoiceHint: "Each plan sounds useful. Which one preserves a fair comparison?",
     evidenceTitle: "Pin the three investigation files to their sites", placeHint: "Drag each paper to the matching site. You can also click to file it automatically.", evidenceFile: "Blue Bay investigation file", evidenceStamp: "Instrument analysis complete", evidenceFiled: "Pinned to map", chooseHighest: "All files are pinned. Which site has the higher signal?", evidenceReady: "The three files are in place. Compare their signal blocks.",
     decisionTitle: "Which next investigation keeps a comparison and finds more clues?", decisionDeclare: "Put two more devices at the river and pause other sites", decisionMoreHarbor: "Keep all comparison sites, add one upstream, and check harbour and storm records", decisionMoreOffshore: "Keep all comparison sites, add one upstream, and continue the offshore comparison", decisionStop: "Retest only the river next month and pause other sites", decisionWrongDeclare: "More river devices sound useful, but without other sites it is harder to tell whether the difference is unique to the river.", decisionWrongStop: "Retesting the river shows time change, but removes the same-time site comparison.", decisionGood: "Good plan. You keep comparison sites, add an upstream clue and use event records to narrow the investigation.",
-    playerSpeaking: "Junior monitor's report", photoCap: "Caps with holes", photoCollector: "Collection material", photoTube: "Clear plastic tube"
+    playerSpeaking: "Junior monitor's report", photoCap: "Caps with holes", photoCollector: "Collection material", photoTube: "Clear plastic tube",
+    voiceSpeed: "Reading speed", speedSlow: "Slow 0.8×", speedNormal: "Normal 1.0×", speedFast: "Fast 1.2×",
+    speakingNow: "Narration is playing. Listen before continuing…", skipSpeech: "Skip narration", voiceUnavailable: "The selected voice is unavailable on this device. Controls have been unlocked.",
+    alertIncoming: "A monitoring buoy has sent a live alert. Pick up the communicator to hear what the station found.",
+    alert1: "A monitoring buoy has just sent the station an unusual metal signal from the river mouth.",
+    alert2: "The buoy measures the present moment and transmits alerts, but one alert cannot show what happened over several weeks.",
+    alertQuestion: "We also need a tool that stays in the sea and gathers a longer record of clues.",
+    alertContinue: "Meet the two monitoring tools",
+    whyName: "Why is it an Artificial Mussel?", whyMission: "Separate live alerts from long-term collection",
+    whyTitle: "It stays in contact with seawater, like a mussel",
+    whyIntro: "A real mussel continually contacts and filters the water around it. An Artificial Mussel borrows that idea, using suitable material to collect chemical clues slowly in the sea.",
+    buoyRoleTitle: "Monitoring buoy: live transmission", buoyRoleBody: "Sensors measure current conditions. Communications equipment sends data to the station and can alert staff to unusual readings.",
+    musselRoleTitle: "Artificial Mussel: long-term collection", musselRoleBody: "It has no power, transmitter or alarm. It quietly stays in the sea for weeks, then laboratory instruments measure it after retrieval.",
+    roleRule: "Remember: a buoy tells us what is happening now; an Artificial Mussel helps us look back at what accumulated over time.",
+    whyAction: "Find the invisible clues",
+    buoyMapLabel: "Live monitoring buoy", buoySending: "Sending data", musselQuietLabel: "Artificial Mussel: collecting, not transmitting",
+    priorityTitle: "Lab results are ready! Rank sites from highest to lowest",
+    priorityPrompt: "These results were measured in the laboratory after retrieval. They are not live alarms from the Artificial Mussels. Tap the highest result, then the next.",
+    priorityProgress: "Ranked {n}/3", priorityCorrect: "Correct. Which site comes next?", priorityWrong: "Compare the signal blocks on the unranked sites and choose the highest one.",
+    priorityDone: "All three sites are ranked. Now plan the next deployment without losing the comparison.", followupTitle: "Choose the next investigation plan"
   });
 
   const SIMPLIFY = [["藍","蓝"],["灣","湾"],["監","监"],["測","测"],["任","任"],["務","务"],["隻","只"],["會","会"],["記","记"],["錄","录"],["裡","里"],["幾","几"],["變","变"],["麼","么"],["這","这"],["個","个"],["觀","观"],["鏡","镜"],["線","线"],["體","体"],["鉛","铅"],["鎘","镉"],["過","过"],["時","时"],["響","响"],["組","组"],["裝","装"],["來","来"],["臺","台"],["膠","胶"],["護","护"],["蓋","盖"],["讓","让"],["進","进"],["環","环"],["發","发"],["選","选"],["標","标"],["記","记"],["開","开"],["學","学"],["圖","图"],["將","将"],["與","与"],["較","较"],["區","区"],["對","对"],["處","处"],["訊","讯"],["點","点"],["還","还"],["實","实"],["驗","验"],["結","结"],["論","论"],["轉","转"],["輪","轮"],["場","场"],["應","应"],["樣","样"],["檢","检"],["儀","仪"],["號","号"],["證","证"],["據","据"],["牆","墙"],["擇","择"],["貼","贴"],["發","发"],["現","现"],["單","单"],["獨","独"],["劃","划"],["繼","继"],["續","续"],["並","并"],["範","范"],["圍","围"],["達","达"],["執","执"],["際","际"],["準","准"],["確","确"],["報","报"],["電","电"],["覺","觉"],["離","离"],["從","从"],["聲","声"],["態","态"],["門","门"],["為","为"],["帶","带"],["啟","启"],["長","长"],["間","间"],["無","无"],["質","质"],["價","价"],["庫","库"],["屬","属"],["遊","游"],["戲","戏"],["內","内"],["專","专"],["業","业"],["壓","压"],["縮","缩"],["頁","页"],["終","终"],["調","调"],["查","查"],["寫","写"],["說","说"],["東","东"],["養","养"],["錯","错"],["潔","洁"],["況","况"],["準","准"],["備","备"],["門","门"],["稱","称"],["類","类"],["積","积"],["傷","伤"],["經","经"],["統","统"],["種","种"],["掃","扫"],["製","制"],["繁","繁"],["為","为"],["險","险"]];
@@ -118,24 +162,25 @@
   }
   function freshState(settings = {}) {
     return {
-      version: 9, scene: "HOME", history: [],
-      uiLocale: settings.uiLocale || "zh-Hant", voiceLocale: settings.voiceLocale || "zh-HK", voiceMuted: Boolean(settings.voiceMuted),
+      version: 10, scene: "HOME", history: [],
+      uiLocale: settings.uiLocale || "zh-Hant", voiceLocale: settings.voiceLocale || "zh-HK", voiceMuted: Boolean(settings.voiceMuted), voiceRate: Number(settings.voiceRate) || 1,
+      radioAnswered: false,
       lensFound: false, knowledgePage: 0, knowledgeVisited: [],
       buildStep: 0, componentFocus: "", componentVisited: [], deviceMark: "", flowRunning: false, flowDone: false,
       deployments: [], deploymentAnimating: "", thirdSite: "", week: 0, stormHandled: false, stormFeedback: "",
       labPhase: "sealed", batchPhase: "", results: [], evidencePlaced: [], lastEvidencePlaced: "", highestSelected: false,
-      decision: "", feedback: "", hint: ""
+      priorityOrder: [], decision: "", feedback: "", hint: ""
     };
   }
   function loadState() {
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem("artificial-mussel-preferences-v9"));
       return freshState(saved || {});
     } catch (_) { return freshState(); }
   }
   let state = loadState();
   function copy() { return getCopy(); }
-  function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ uiLocale: state.uiLocale, voiceLocale: state.voiceLocale, voiceMuted: state.voiceMuted })); }
+  function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ uiLocale: state.uiLocale, voiceLocale: state.voiceLocale, voiceMuted: state.voiceMuted, voiceRate: state.voiceRate })); }
   function loc(id) { return locations.find(item => item.id === id); }
   function locName(id) { return loc(id)?.names[state.uiLocale] || id; }
   function format(text, vars = {}) { let out = text; for (const [key, value] of Object.entries(vars)) out = out.replaceAll(`{${key}}`, String(value)); return out; }
@@ -155,7 +200,7 @@
   function sceneMeta() {
     const c = copy();
     const map = {
-      ALERT: [c.alertName, c.alertMission], LENS: [c.lensName, c.lensMission], BUILD: [c.buildName, c.buildMission], FLOW: [c.flowName, c.flowMission],
+      ALERT: [c.alertName, c.alertMission], WHY: [c.whyName, c.whyMission], LENS: [c.lensName, c.lensMission], BUILD: [c.buildName, c.buildMission], FLOW: [c.flowName, c.flowMission],
       DEPLOY: [c.deployName, c.deployMission], TIME: [c.timeName, c.timeMission], LAB: [c.labName, c.labMission], EVIDENCE: [c.evidenceName, c.evidenceMission],
       DECISION: [c.decisionName, c.decisionMission], COMPLETE: [c.completeName, c.completeMissionLabel]
     };
@@ -163,7 +208,7 @@
   }
   function sampleCount() { return state.results.length; }
   function stageIndex() {
-    const groups = [["ALERT","LENS"],["BUILD","FLOW"],["DEPLOY","TIME"],["LAB","EVIDENCE"],["DECISION","COMPLETE"]];
+    const groups = [["ALERT","WHY","LENS"],["BUILD","FLOW"],["DEPLOY","TIME"],["LAB","EVIDENCE"],["DECISION","COMPLETE"]];
     return Math.max(0, groups.findIndex(group => group.includes(state.scene)));
   }
 
@@ -174,6 +219,7 @@
     const home = state.scene === "HOME";
     app.innerHTML = `<div class="g3-shell ${home ? "is-home" : ""}">${home ? "" : renderHud()}<main id="game-screen" class="g3-screen scene-${state.scene.toLowerCase()}" tabindex="-1">${renderScene()}</main></div>`;
     document.getElementById("game-screen")?.focus({ preventScroll: true });
+    syncNarrationGuard();
   }
 
   function renderHud() {
@@ -184,26 +230,33 @@
 
   function renderScene() {
     switch (state.scene) {
-      case "HOME": return renderHome(); case "ALERT": return renderAlert(); case "LENS": return renderLens(); case "BUILD": return renderBuild();
+      case "HOME": return renderHome(); case "ALERT": return renderAlert(); case "WHY": return renderWhy(); case "LENS": return renderLens(); case "BUILD": return renderBuild();
       case "FLOW": return renderFlow(); case "DEPLOY": return renderDeploy(); case "TIME": return renderTime(); case "LAB": return renderLab();
       case "EVIDENCE": return renderEvidence(); case "DECISION": return renderDecision(); case "COMPLETE": return renderComplete(); default: return renderHome();
     }
   }
-  function speechLine(index, text, tag = "p") { return `<${tag} class="speech-line" data-speech="${index}">${text}</${tag}>`; }
+  function speechLine(key, text, tag = "p") { return `<${tag} class="speech-line" data-speech="${key}">${text}</${tag}>`; }
   function localeRadio(name, value, label, checked) { return `<label><input type="radio" name="${name}" value="${value}" ${checked ? "checked" : ""}><span>${label}</span></label>`; }
 
   function renderHome() {
     const c = copy();
-    return `<section class="g3-home"><img src="assets/blue-bay-mission.png" alt="Blue Bay"><div class="home-tint"></div><div class="home-ticket"><span class="role-sticker">⚙ ${c.role}</span><h1>${c.homeTitle}</h1><p>${c.homeLead}</p><div class="verb-route"><span><b>1</b>${c.stageKnow}</span><i>→</i><span><b>2</b>${c.stageBuild}</span><i>→</i><span><b>3</b>${c.stageMonitor}</span><i>→</i><span><b>4</b>${c.stageAnalyse}</span><i>→</i><span><b>5</b>${c.stageDecide}</span></div><div class="home-settings"><fieldset><legend>${c.uiLanguage}</legend><div>${localeRadio("ui-locale", "zh-Hant", c.traditional, state.uiLocale === "zh-Hant")}${localeRadio("ui-locale", "zh-Hans", c.simplified, state.uiLocale === "zh-Hans")}${localeRadio("ui-locale", "en", c.english, state.uiLocale === "en")}</div></fieldset><fieldset><legend>${c.voiceLanguage}</legend><div>${localeRadio("voice-locale", "zh-CN", c.mandarin, state.voiceLocale === "zh-CN")}${localeRadio("voice-locale", "zh-HK", c.cantonese, state.voiceLocale === "zh-HK")}${localeRadio("voice-locale", "en-US", c.voiceEnglish, state.voiceLocale === "en-US")}</div></fieldset></div><footer><small>${c.duration}</small><button class="game-button primary next-target" data-action="new-game">${c.start} →</button></footer></div></section>`;
+    return `<section class="g3-home"><img src="assets/blue-bay-mission.png" alt="Blue Bay"><div class="home-tint"></div><div class="home-ticket"><span class="role-sticker">⚙ ${c.role}</span><h1>${c.homeTitle}</h1><p>${c.homeLead}</p><div class="verb-route"><span><b>1</b>${c.stageKnow}</span><i>→</i><span><b>2</b>${c.stageBuild}</span><i>→</i><span><b>3</b>${c.stageMonitor}</span><i>→</i><span><b>4</b>${c.stageAnalyse}</span><i>→</i><span><b>5</b>${c.stageDecide}</span></div><div class="home-settings"><fieldset><legend>${c.uiLanguage}</legend><div>${localeRadio("ui-locale", "zh-Hant", c.traditional, state.uiLocale === "zh-Hant")}${localeRadio("ui-locale", "zh-Hans", c.simplified, state.uiLocale === "zh-Hans")}${localeRadio("ui-locale", "en", c.english, state.uiLocale === "en")}</div></fieldset><fieldset><legend>${c.voiceLanguage}</legend><div>${localeRadio("voice-locale", "zh-CN", c.mandarin, state.voiceLocale === "zh-CN")}${localeRadio("voice-locale", "zh-HK", c.cantonese, state.voiceLocale === "zh-HK")}${localeRadio("voice-locale", "en-US", c.voiceEnglish, state.voiceLocale === "en-US")}</div></fieldset><fieldset><legend>${c.voiceSpeed}</legend><div>${localeRadio("voice-rate", "0.8", c.speedSlow, state.voiceRate === .8)}${localeRadio("voice-rate", "1", c.speedNormal, state.voiceRate === 1)}${localeRadio("voice-rate", "1.2", c.speedFast, state.voiceRate === 1.2)}</div></fieldset></div><footer><small>${c.duration}</small><button class="game-button primary next-target" data-action="new-game">${c.start} →</button></footer></div></section>`;
   }
 
   function renderMentorBubble(speaker, lines, action = "") {
-    return `<div class="mentor-wrap"><div class="mentor" aria-hidden="true"><span class="mentor-hair"></span><span class="mentor-face"><i class="eye left"></i><i class="eye right"></i><i class="mentor-mouth"></i></span><span class="mentor-body">◎</span></div><div class="speech-bubble"><strong>${speaker}</strong>${lines.map((line, index) => speechLine(index, line)).join("")}${action}</div></div>`;
+    return `<div class="mentor-wrap"><div class="mentor" aria-hidden="true"><span class="mentor-hair"></span><span class="mentor-face"><i class="eye left"></i><i class="eye right"></i><i class="mentor-mouth"></i></span><span class="mentor-body">◎</span></div><div class="speech-bubble"><strong>${speaker}</strong>${lines.map((line, index) => typeof line === "string" ? speechLine(index, line) : speechLine(line.key, line.text)).join("")}${action}</div></div>`;
   }
 
   function renderAlert() {
     const c = copy();
-    return `<section class="world-scene alert-world"><img src="assets/blue-bay-mission.png" alt="Blue Bay research station"><div class="world-shade"></div><div class="alert-beacon"><span>!</span><i></i><i></i></div>${renderMentorBubble(c.alertSpeaker, [c.alert1, c.alert2, c.alertQuestion], `<button class="game-button primary" data-action="goto" data-scene="LENS">📻 ${c.answerRadio}</button>`)}<div class="radio-reply">${c.alertReply}</div></section>`;
+    const lines = state.radioAnswered ? [{key:"alert-1",text:c.alert1},{key:"alert-2",text:c.alert2},{key:"alert-3",text:c.alertQuestion}] : [{key:"incoming",text:c.alertIncoming}];
+    const action = state.radioAnswered ? `<button class="game-button primary next-target" data-action="goto" data-scene="WHY" data-narration-lock>${c.alertContinue} →</button>` : `<button class="game-button primary next-target radio-answer" data-action="answer-radio">📻 ${c.answerRadio}</button>`;
+    return `<section class="world-scene alert-world"><img src="assets/blue-bay-mission.png" alt="Blue Bay research station"><div class="world-shade"></div><div class="alert-beacon"><span>!</span><i></i><i></i></div>${renderMentorBubble(c.alertSpeaker, lines, action)}<div class="radio-reply">${c.alertReply}</div></section>`;
+  }
+
+  function renderWhy() {
+    const c = copy();
+    return `<section class="why-world"><div class="why-hero"><div class="real-mussel" aria-hidden="true"><span></span><i>≈</i></div><div class="why-device">${renderDevice(true,3)}</div></div><article class="why-card">${speechLine("why-title",c.whyTitle,"h1")}${speechLine("why-intro",c.whyIntro)}<div class="role-compare"><section class="role-tool buoy-role"><div class="buoy-graphic"><span>⌁</span><i></i><b>)))</b></div><div>${speechLine("buoy-title",c.buoyRoleTitle,"h2")}${speechLine("buoy-body",c.buoyRoleBody)}</div></section><section class="role-tool mussel-role"><div class="mussel-graphic">◎<small>···</small></div><div>${speechLine("mussel-title",c.musselRoleTitle,"h2")}${speechLine("mussel-body",c.musselRoleBody)}</div></section></div>${speechLine("role-rule",c.roleRule,"strong")}<button class="game-button primary next-target" data-action="goto" data-scene="LENS" data-narration-lock>${c.whyAction} →</button></article></section>`;
   }
 
   function renderLens() {
@@ -214,29 +267,30 @@
     const files = knowledgeFiles();
     const page = Math.max(0,Math.min(3,state.knowledgePage)); const file = files[page]; const complete = state.knowledgeVisited.length >= 4;
     const visual = `<div class="knowledge-visual ${file.visual}" aria-hidden="true"><span class="k-particles">••••</span><span class="k-plankton">✦</span><span class="k-fish small"><i></i></span><span class="k-fish large"><i></i></span><span class="k-shell"></span><span class="k-collector">★</span><span class="k-scanner">◎</span><b class="k-arrow">→</b></div>`;
-    return `<section class="v6-knowledge"><div class="knowledge-sample"><div class="sample-glass revealed"><span>${state.uiLocale === "en" ? "SEAWATER" : "海水樣本"}</span><i></i><i></i><i></i><i></i></div><div class="science-lens found"><span></span></div><div class="knowledge-found">✓ ${c.lensFound}</div></div><article class="knowledge-card" data-feedback><header><div><small>${c.knowledgeTitle}</small>${speechLine(0,file.title,"h2")}</div><span>${format(c.knowledgeProgress,{n:page+1})}</span></header>${speechLine(1,file.body)}${visual}<div class="knowledge-key"><small>${c.knowledgeKey}</small>${speechLine(2,file.key,"strong")}</div><div class="knowledge-footer"><button data-action="knowledge-prev" ${page===0 ? "disabled" : ""} aria-label="${c.knowledgePrev}">←</button><div class="knowledge-dots">${files.map((_,index)=>`<i class="${index===page?"current":""} ${state.knowledgeVisited.includes(index)?"seen":""}"></i>`).join("")}<small>${format(c.knowledgeSeen,{n:state.knowledgeVisited.length})}</small></div>${page<3?`<button class="next-target" data-action="knowledge-next" aria-label="${c.knowledgeNext}">→</button>`:`<span class="knowledge-end" aria-hidden="true">✓</span>`}</div><div class="metal-guard">⚠ ${c.metalGuard}</div>${complete ? `<div class="knowledge-complete">✓ ${c.knowledgeComplete}</div><button class="game-button primary next-target" data-action="goto" data-scene="BUILD">${c.toBuild} →</button>` : ""}</article></section>`;
+    return `<section class="v6-knowledge"><div class="knowledge-sample"><div class="sample-glass revealed"><span>${state.uiLocale === "en" ? "SEAWATER" : "海水樣本"}</span><i></i><i></i><i></i><i></i></div><div class="science-lens found"><span></span></div><div class="knowledge-found">✓ ${c.lensFound}</div></div><article class="knowledge-card" data-feedback><header><div><small>${c.knowledgeTitle}</small>${speechLine("knowledge-title",file.title,"h2")}</div><span>${format(c.knowledgeProgress,{n:page+1})}</span></header>${speechLine("knowledge-body",file.body)}${visual}<div class="knowledge-key"><small>${c.knowledgeKey}</small>${speechLine("knowledge-key",file.key,"strong")}</div><div class="knowledge-footer"><button data-action="knowledge-prev" data-narration-lock ${page===0 ? "disabled" : ""} aria-label="${c.knowledgePrev}">←</button><div class="knowledge-dots">${files.map((_,index)=>`<i class="${index===page?"current":""} ${state.knowledgeVisited.includes(index)?"seen":""}"></i>`).join("")}<small>${format(c.knowledgeSeen,{n:state.knowledgeVisited.length})}</small></div>${page<3?`<button class="next-target" data-action="knowledge-next" data-narration-lock aria-label="${c.knowledgeNext}">→</button>`:`<span class="knowledge-end" aria-hidden="true">✓</span>`}</div><div class="metal-guard">⚠ ${c.metalGuard}</div>${complete ? `<div class="knowledge-complete">✓ ${c.knowledgeComplete}</div><button class="game-button primary next-target" data-action="goto" data-scene="BUILD" data-narration-lock>${c.toBuild} →</button>` : ""}</article></section>`;
   }
 
   function partCard(index, icon, title, help) {
     const c = copy(); const installed = state.buildStep > index; const current = state.buildStep === index;
     return `<button class="part-card ${installed ? "installed" : ""} ${current ? "current next-target" : ""}" data-action="install-part" data-part="${index}" draggable="${!installed}"><span>${installed ? "✓" : icon}</span><div><strong>${title}</strong><small>${help}</small></div><em>${installed ? c.installed : c.install}</em></button>`;
   }
-  function renderDevice(large = false) {
+  function renderDevice(large = false, forcedStep = null) {
+    const displayStep = forcedStep ?? state.buildStep;
     const mark = state.deviceMark || ""; const interactive = state.scene === "BUILD" && state.buildStep >= 3;
     const hotspot = (id,label,klass) => { const seen=state.componentVisited.includes(id); return `<button class="component-hotspot ${klass} ${seen?"seen":"next-target"}" data-action="component-focus" data-component="${id}" aria-label="${label}">${seen?"✓":label}</button>`; };
     const collectorAction = interactive ? ` data-action="component-focus" data-component="collector" role="button" aria-label="${copy().componentCollector}"` : "";
-    return `<div class="device-model ${large ? "large" : ""} step-${state.buildStep} ${interactive ? "interactive" : ""}"><div class="cap left"><i></i><i></i><i></i></div><div class="tube"><div class="gel"></div><div class="collector"${collectorAction}></div><span class="device-mark">${mark}</span></div><div class="cap right"><i></i><i></i><i></i></div>${interactive ? `${hotspot("cap","1","cap-hotspot")}${hotspot("tube","2","tube-hotspot")}${hotspot("water","3","water-hotspot")}${hotspot("collector","4","collector-hotspot")}` : ""}</div>`;
+    return `<div class="device-model ${large ? "large" : ""} step-${displayStep} ${interactive ? "interactive" : ""}"><div class="cap left"><i></i><i></i><i></i></div><div class="tube"><div class="gel"></div><div class="collector"${collectorAction}></div><span class="device-mark">${mark}</span></div><div class="cap right"><i></i><i></i><i></i></div>${interactive ? `${hotspot("cap","1","cap-hotspot")}${hotspot("tube","2","tube-hotspot")}${hotspot("water","3","water-hotspot")}${hotspot("collector","4","collector-hotspot")}` : ""}</div>`;
   }
   function renderBuild() {
     const c = copy(); const done = state.buildStep >= 3;
     const parts = { cap:[c.componentCap,c.componentCapHelp], tube:[c.componentTube,c.componentTubeHelp], water:[c.componentWater,c.componentWaterHelp], collector:[c.componentCollector,c.componentCollectorHelp] };
     const focused = parts[state.componentFocus]; const explored = state.componentVisited.length >= 4;
-    return `<section class="workbench-world v5-build v6-build"><div class="pegboard"><span></span><span></span><span></span></div><div class="build-copy"><p>${c.buildLead}</p>${state.hint ? `<div class="coach-hint" data-feedback>💡 ${state.hint}</div>` : ""}</div><div class="assembly-zone" data-drop="build"><div class="assembly-glow">${renderDevice(true)}</div>${done ? `<strong class="ready-label">✓ ${c.deviceReady}</strong><small class="explore-label ${explored?"complete":""}">${explored?c.componentExploreReady:c.componentExplorePrompt}</small>` : `<strong class="drop-label">${state.uiLocale === "en" ? "TAP OR DROP THE GLOWING PART" : "點擊或拖動發光部件"}</strong>`}</div><aside class="parts-tray"><h2>${c.buildTitle}</h2>${partCard(0,"●",c.partCollector,c.partCollectorHelp)}${partCard(1,"≈",c.partGel,c.partGelHelp)}${partCard(2,"•••",c.partCap,c.partCapHelp)}${done ? `<div class="component-progress"><span>${format(c.componentExploreProgress,{n:state.componentVisited.length})}</span>${[1,2,3,4].map((n,i)=>`<i class="${i<state.componentVisited.length?"seen":""}">${i<state.componentVisited.length?"✓":n}</i>`).join("")}</div><div class="component-guide ${focused?"has-focus":""}"><small>${focused?c.componentHint:c.exploreParts}</small><strong>${focused?focused[0]:c.componentExplorePrompt}</strong>${focused?`<p>${focused[1]}</p>`:""}</div>` : ""}</aside>${done && explored ? `<div class="mark-picker"><strong>${c.chooseMark}</strong><div><button data-action="choose-mark" data-mark="★" class="${!state.deviceMark ? "next-target" : ""}">★</button><button data-action="choose-mark" data-mark="≈">≈</button><button data-action="choose-mark" data-mark="🐚">🐚</button></div>${state.deviceMark ? `<p>${c.markChosen} ${state.deviceMark}</p><button class="game-button primary next-target" data-action="goto" data-scene="FLOW">${c.toFlow} →</button>` : ""}</div>` : ""}</section>`;
+    return `<section class="workbench-world v5-build v6-build"><div class="pegboard"><span></span><span></span><span></span></div><div class="build-copy">${speechLine("build-lead",c.buildLead)}${state.hint ? `<div class="coach-hint" data-feedback>💡 ${state.hint}</div>` : ""}</div><div class="assembly-zone" data-drop="build"><div class="assembly-glow">${renderDevice(true)}</div>${done ? `<strong class="ready-label">✓ ${c.deviceReady}</strong><small class="explore-label ${explored?"complete":""}">${explored?c.componentExploreReady:c.componentExplorePrompt}</small>` : `<strong class="drop-label">${state.uiLocale === "en" ? "TAP OR DROP THE GLOWING PART" : "點擊或拖動發光部件"}</strong>`}</div><aside class="parts-tray">${speechLine("build-title",c.buildTitle,"h2")}${partCard(0,"●",c.partCollector,c.partCollectorHelp)}${partCard(1,"≈",c.partGel,c.partGelHelp)}${partCard(2,"•••",c.partCap,c.partCapHelp)}${done ? `<div class="component-progress"><span>${format(c.componentExploreProgress,{n:state.componentVisited.length})}</span>${[1,2,3,4].map((n,i)=>`<i class="${i<state.componentVisited.length?"seen":""}">${i<state.componentVisited.length?"✓":n}</i>`).join("")}</div><div class="component-guide ${focused?"has-focus":""}"><small>${focused?c.componentHint:c.exploreParts}</small><strong>${focused?focused[0]:c.componentExplorePrompt}</strong>${focused?`<p>${focused[1]}</p>`:""}</div>` : ""}</aside>${done && explored ? `<div class="mark-picker"><strong>${c.chooseMark}</strong><div><button data-action="choose-mark" data-mark="★" class="${!state.deviceMark ? "next-target" : ""}">★</button><button data-action="choose-mark" data-mark="≈">≈</button><button data-action="choose-mark" data-mark="🐚">🐚</button></div>${state.deviceMark ? `<p>${c.markChosen} ${state.deviceMark}</p><button class="game-button primary next-target" data-action="goto" data-scene="FLOW">${c.toFlow} →</button>` : ""}</div>` : ""}</section>`;
   }
 
   function renderFlow() {
     const c = copy();
-    return `<section class="flow-world v6-flow ${state.flowRunning ? "running" : ""} ${state.flowDone ? "done" : ""}"><div class="tank"><div class="water-top"></div>${renderDevice(true)}<div class="flow-particles">${Array.from({length:14},(_,i)=>`<i style="--i:${i}"></i>`).join("")}</div><div class="captured-particles">${Array.from({length:12},(_,i)=>`<i style="--i:${i}"></i>`).join("")}</div><div class="fish one"></div><div class="fish two"></div><small class="scale-note">🔎 ${c.flowScale}</small></div><div class="flow-console"><h2>${c.flowTitle}</h2><button class="valve ${!state.flowRunning && !state.flowDone ? "next-target" : ""}" data-action="run-flow" ${state.flowRunning || state.flowDone ? "disabled" : ""}><span>↻</span><strong>${state.flowRunning ? c.flowRunning : c.flowStart}</strong></button><div class="principle-path"><article class="${state.flowRunning || state.flowDone ? "on" : ""}"><b>1</b><span>${c.flowWater}</span></article><article class="${state.flowRunning || state.flowDone ? "on delay1" : ""}"><b>2</b><span>${c.flowCapture}</span></article><article class="${state.flowDone ? "on" : ""}"><b>3</b><span>${c.flowWait}</span></article><article class="${state.flowDone ? "on" : ""}"><b>4</b><span>${c.flowNoPower}</span></article></div>${state.flowDone ? `<div class="success-banner" data-feedback>✓ ${c.flowDone}</div><button class="game-button primary next-target" data-action="goto" data-scene="DEPLOY">${c.toMap} →</button>` : ""}</div></section>`;
+    return `<section class="flow-world v6-flow ${state.flowRunning ? "running" : ""} ${state.flowDone ? "done" : ""}"><div class="tank"><div class="water-top"></div>${renderDevice(true)}<div class="flow-particles">${Array.from({length:14},(_,i)=>`<i style="--i:${i}"></i>`).join("")}</div><div class="captured-particles">${Array.from({length:12},(_,i)=>`<i style="--i:${i}"></i>`).join("")}</div><div class="fish one"></div><div class="fish two"></div><small class="scale-note">🔎 ${c.flowScale}</small></div><div class="flow-console">${speechLine("flow-title",c.flowTitle,"h2")}<button class="valve ${!state.flowRunning && !state.flowDone ? "next-target" : ""}" data-action="run-flow" data-narration-lock ${state.flowRunning || state.flowDone ? "disabled" : ""}><span>↻</span><strong>${state.flowRunning ? c.flowRunning : c.flowStart}</strong></button><div class="principle-path"><article class="${state.flowRunning || state.flowDone ? "on" : ""}"><b>1</b>${speechLine("flow-water",c.flowWater,"span")}</article><article class="${state.flowRunning || state.flowDone ? "on delay1" : ""}"><b>2</b>${speechLine("flow-capture",c.flowCapture,"span")}</article><article class="${state.flowDone ? "on" : ""}"><b>3</b>${speechLine("flow-wait",c.flowWait,"span")}</article><article class="${state.flowDone ? "on" : ""}"><b>4</b>${speechLine("flow-power",c.flowNoPower,"span")}</article></div>${state.flowDone ? `<div class="success-banner" data-feedback>✓ ${c.flowDone}</div><button class="game-button primary next-target" data-action="goto" data-scene="DEPLOY">${c.toMap} →</button>` : ""}</div></section>`;
   }
 
   function renderMapSites(mode = "deploy") {
@@ -246,7 +300,8 @@
     const routePath = (klass,d) => `<path class="${klass}" d="${d}"/>`;
     const routes = `${deployed.includes("RIV") || state.deploymentAnimating === "RIV" ? routePath(state.deploymentAnimating === "RIV" ? "active" : "complete","M130 110 Q230 65 350 205") : ""}${deployed.includes("RES") || state.deploymentAnimating === "RES" ? routePath(state.deploymentAnimating === "RES" ? "active" : "complete","M350 205 Q570 65 790 165") : ""}${deployed.some(id=>["HAR","OFF"].includes(id)) || ["HAR","OFF"].includes(state.deploymentAnimating) ? routePath(state.deploymentAnimating ? "active" : "complete",(state.deploymentAnimating || deployed.find(id=>["HAR","OFF"].includes(id))) === "HAR" ? "M790 165 Q900 390 735 550" : "M790 165 Q485 395 155 550") : ""}`;
     const leg = expectedIndex + 1; const routeLabel = leg === 1 ? c.routeFromStation : leg === 2 ? c.routeFromRiver : c.routeFromReserve;
-    return `<div class="mission-map" data-map><div class="map-land north"></div><div class="map-land south"></div><div class="map-river"></div><svg class="survey-routes" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true">${routes}</svg><span class="map-current m1">›</span><span class="map-current m2">›</span>${["RIV","RES","HAR","OFF"].map(id => {
+    const telemetry = `<svg class="telemetry-line" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true"><path d="M282 255 Q205 155 135 110"/></svg><div class="monitoring-buoy"><span>⌁</span><i></i><strong>${c.buoyMapLabel}</strong><small>${c.buoySending}</small></div><div class="quiet-monitor"><span>◎</span><small>${c.musselQuietLabel}</small></div>`;
+    return `<div class="mission-map" data-map><div class="map-land north"></div><div class="map-land south"></div><div class="map-river"></div><svg class="survey-routes" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true">${routes}</svg>${telemetry}<span class="map-current m1">›</span><span class="map-current m2">›</span>${["RIV","RES","HAR","OFF"].map(id => {
       const isDone = deployed.includes(id); const expected = expectedIndex === 0 ? id === "RIV" : expectedIndex === 1 ? id === "RES" : expectedIndex === 2 ? ["HAR","OFF"].includes(id) : false;
       const result = state.results.find(item => item.id === id); const placed = state.evidencePlaced.includes(id);
       const dropTarget = mode === "evidence" && id === firstUnplaced;
@@ -255,20 +310,20 @@
   }
   function renderDeploy() {
     const c = copy(); const next = state.deployments.length; const prompt = next === 0 ? c.deployRiver : next === 1 ? c.deployReserve : next === 2 ? c.deployThird : c.allDeployed;
-    return `<section class="deploy-world">${renderMapSites("deploy")}<aside class="deploy-drawer"><h2>${c.deployTitle}</h2><p>${prompt}</p><div class="auto-deploy-note"><span>${state.deviceMark || "◎"}</span><div><small>${next < 3 ? c.autoDevice : c.allDeployed}</small><strong>${next < 3 ? `AM-0${next + 1}` : "✓ 3/3"}</strong><em>${next < 3 ? c.chooseSite : ""}</em></div></div><div class="device-crate status-only">${[0,1,2].map(i => `<div class="crate-device ${i < next ? "used" : i === next ? "current" : "locked"}"><span>${i < next ? "✓" : state.deviceMark || "◎"}</span><strong>AM-0${i + 1}</strong><small>${i < next ? c.deployed : i === next ? c.toolbox : "🔒"}</small></div>`).join("")}</div>${state.hint ? `<div class="coach-hint" data-feedback>💡 ${state.hint}</div>` : ""}${next >= 3 ? `<button class="game-button primary next-target" data-action="goto" data-scene="TIME">${c.toTime} →</button>` : ""}</aside></section>`;
+    return `<section class="deploy-world">${renderMapSites("deploy")}<aside class="deploy-drawer"><h2>${c.deployTitle}</h2>${speechLine("deploy",prompt)}<div class="auto-deploy-note"><span>${state.deviceMark || "◎"}</span><div><small>${next < 3 ? c.autoDevice : c.allDeployed}</small><strong>${next < 3 ? `AM-0${next + 1}` : "✓ 3/3"}</strong><em>${next < 3 ? c.chooseSite : ""}</em></div></div><div class="device-crate status-only">${[0,1,2].map(i => `<div class="crate-device ${i < next ? "used" : i === next ? "current" : "locked"}"><span>${i < next ? "✓" : state.deviceMark || "◎"}</span><strong>AM-0${i + 1}</strong><small>${i < next ? c.deployed : i === next ? c.toolbox : "🔒"}</small></div>`).join("")}</div>${state.hint ? `<div class="coach-hint" data-feedback>💡 ${state.hint}</div>` : ""}${next >= 3 ? `<button class="game-button primary next-target" data-action="goto" data-scene="TIME">${c.toTime} →</button>` : ""}</aside></section>`;
   }
 
   function renderTime() {
     const c = copy(); const storm = state.week >= 4 && !state.stormHandled;
     const observation = c[`timeObservation${state.week}`] || c.timeObservation8;
     const dots = Math.min(12, Math.round(state.week * 1.5));
-    return `<section class="time-world v6-time ${storm ? "storm" : ""} week-${state.week}"><div class="time-scene"><div class="sky-cycle"><span class="sun">☀</span><span class="moon">☾</span>${storm ? `<div class="rain"></div>` : ""}</div><div class="sea-cycle">${renderDevice(false)}<div class="time-clues">${Array.from({length:12},(_,i)=>`<i class="${i < dots ? "visible" : ""}" style="--i:${i}"></i>`).join("")}</div><div class="fish one"></div><div class="fish two"></div></div></div><aside class="time-dashboard"><div class="time-wheel" style="--progress:${state.week / 8}"><button class="${!storm && state.week < 8 ? "next-target" : ""}" data-action="advance-week" ${storm || state.week >= 8 ? "disabled" : ""}><span>${state.week}</span><small>/ 8</small></button><strong>${format(c.week,{n:state.week})}</strong><em>${c.weekAction}</em></div><div class="week-observation"><small>${c.clueBoardTitle}</small><div class="clue-meter"><b>${c.clueCount}</b><span>${Array.from({length:12},(_,i)=>`<i class="${i<dots?"on":""}"></i>`).join("")}</span><strong>${dots}/12</strong></div><p>${observation}</p></div>${storm ? `<div class="field-note"><span>🌧</span><h2>${c.stormTitle}</h2><p>${c.stormChoiceHint}</p><div class="storm-options next-target-group"><button data-action="storm-choice" data-value="early"><b>A</b>${c.stormEarly}</button><button data-action="storm-choice" data-value="move"><b>B</b>${c.stormMove}</button><button data-action="storm-choice" data-value="record"><b>C</b>${c.stormKeep}</button></div>${state.stormFeedback ? `<div class="coach-hint ${state.stormFeedback===c.stormGood?"good":""}" data-feedback>${state.stormFeedback}</div>` : ""}</div>` : ""}${state.week >= 8 && state.stormHandled ? `<div class="weeks-complete"><strong>✓ ${c.weeksDone}</strong><button class="game-button primary next-target" data-action="goto" data-scene="LAB">🚤 ${c.retrieve}</button></div>` : ""}</aside></section>`;
+    return `<section class="time-world v6-time ${storm ? "storm" : ""} week-${state.week}"><div class="time-scene"><div class="sky-cycle"><span class="sun">☀</span><span class="moon">☾</span>${storm ? `<div class="rain"></div>` : ""}</div><div class="sea-cycle">${renderDevice(false)}<div class="time-clues">${Array.from({length:12},(_,i)=>`<i class="${i < dots ? "visible" : ""}" style="--i:${i}"></i>`).join("")}</div><div class="fish one"></div><div class="fish two"></div></div></div><aside class="time-dashboard"><div class="time-wheel" style="--progress:${state.week / 8}"><button class="${!storm && state.week < 8 ? "next-target" : ""}" data-action="advance-week" ${storm || state.week >= 8 ? "disabled" : ""}><span>${state.week}</span><small>/ 8</small></button><strong>${format(c.week,{n:state.week})}</strong><em>${c.weekAction}</em></div><div class="week-observation"><small>${c.clueBoardTitle}</small><div class="clue-meter"><b>${c.clueCount}</b><span>${Array.from({length:12},(_,i)=>`<i class="${i<dots?"on":""}"></i>`).join("")}</span><strong>${dots}/12</strong></div>${speechLine("time",observation)}</div>${storm ? `<div class="field-note"><span>🌧</span>${speechLine("storm-title",c.stormTitle,"h2")}${speechLine("storm-question",c.stormChoiceHint)}<div class="storm-options next-target-group"><button data-action="storm-choice" data-value="early"><b>A</b>${c.stormEarly}</button><button data-action="storm-choice" data-value="move"><b>B</b>${c.stormMove}</button><button data-action="storm-choice" data-value="record"><b>C</b>${c.stormKeep}</button></div>${state.stormFeedback ? `<div class="coach-hint ${state.stormFeedback===c.stormGood?"good":""}" data-feedback>${state.stormFeedback}</div>` : ""}</div>` : ""}${state.week >= 8 && state.stormHandled ? `<div class="weeks-complete"><strong>✓ ${c.weeksDone}</strong><button class="game-button primary next-target" data-action="goto" data-scene="LAB">🚤 ${c.retrieve}</button></div>` : ""}</aside></section>`;
   }
 
   function renderSignalBlocks(level) { return `<div class="signal-blocks">${[1,2,3].map(i => `<i class="${i <= level ? "on" : ""}"></i>`).join("")}</div>`; }
   function renderLab() {
     const c = copy(); const id = currentSampleId(); const level = signalLevel(id); const result = state.results.find(item => item.id === id); const batchDone = state.results.length >= 3;
-    return `<section class="lab-world v6-lab"><div class="sample-rack">${state.deployments.map((site,index)=>{const done=state.results.some(item=>item.id===site);const active=index===0&&!result;return `<div class="rack-item ${active ? "current" : ""} ${done ? "done" : ""}"><span>${done ? "✓" : loc(site)?.icon}</span><strong>${locName(site)}</strong></div>`;}).join("")}</div><div class="lab-workspace"><div class="lab-bench"><div class="bench-label">${state.uiLocale==="en"?"SAMPLE WORKBENCH":"樣本工作台"}</div><div class="lab-device phase-${state.labPhase}"><button class="lab-cap ${state.labPhase === "sealed" ? "next-target" : ""}" data-action="lab-open" ${state.labPhase !== "sealed" ? "disabled" : ""}>•••</button><div class="lab-tube"><button class="lab-collector ${state.labPhase === "opened" ? "next-target" : ""}" data-action="lab-extract" ${state.labPhase !== "opened" ? "disabled" : ""}>●●●</button></div></div><div class="transfer-arrow">→</div><button class="analyser ${state.labPhase} ${state.labPhase === "extracted" ? "next-target" : ""}" data-action="lab-insert" ${state.labPhase !== "extracted" ? "disabled" : ""}><span class="scanner-line"></span><strong>${state.labPhase === "scanning" ? c.labScanning : c.labStepInsert}</strong></button>${state.batchPhase ? `<div class="batch-machine ${batchDone ? "done" : "running"}"><span class="batch-scan"></span><strong>${batchDone ? c.allResults : c.batchRunning}</strong><div>${state.deployments.slice(1).map((site,index)=>`<article class="${state.results.some(item=>item.id===site)?"done":""}"><span>${state.results.some(item=>item.id===site)?"✓":"…"}</span><b>${locName(site)}</b><small>${index===0?c.batchOne:c.batchTwo}</small></article>`).join("")}</div></div>` : ""}</div><aside class="lab-instructions"><h2>${c.labTitle}</h2><p class="lab-coach">${c.labCoach}</p><ol><li class="${["opened","extracted","scanning","result"].includes(state.labPhase) ? "done" : "current"}"><span>1</span>${c.labStepOpen}</li><li class="${["extracted","scanning","result"].includes(state.labPhase) ? "done" : state.labPhase === "opened" ? "current" : ""}"><span>2</span>${c.labStepExtract}</li><li class="${["result"].includes(state.labPhase) ? "done" : ["extracted","scanning"].includes(state.labPhase) ? "current" : ""}"><span>3</span>${c.labStepInsert}</li></ol>${state.labPhase === "result" || result ? `<div class="printed-result"><small>${c.labResult}</small><strong>${locName(id)}</strong>${renderSignalBlocks(level)}<b>${signalText(level)}</b></div><div class="analysis-summary"><strong>${c.batchTitle}</strong><p>${c.batchExplain}</p></div>${!state.batchPhase ? `<button class="game-button primary next-target" data-action="batch-analysis">${c.batchAction} →</button>` : batchDone ? `<div class="success-banner">✓ ${c.allResults}</div><button class="game-button primary next-target" data-action="goto" data-scene="EVIDENCE">${c.toEvidence} →</button>` : `<div class="batch-wait">⏳ ${c.batchRunning}</div>`}` : ""}</aside></div></section>`;
+    return `<section class="lab-world v6-lab"><div class="sample-rack">${state.deployments.map((site,index)=>{const done=state.results.some(item=>item.id===site);const active=index===0&&!result;return `<div class="rack-item ${active ? "current" : ""} ${done ? "done" : ""}"><span>${done ? "✓" : loc(site)?.icon}</span><strong>${locName(site)}</strong></div>`;}).join("")}</div><div class="lab-workspace"><div class="lab-bench"><div class="bench-label">${state.uiLocale==="en"?"SAMPLE WORKBENCH":"樣本工作台"}</div><div class="lab-device phase-${state.labPhase}"><button class="lab-cap ${state.labPhase === "sealed" ? "next-target" : ""}" data-action="lab-open" ${state.labPhase !== "sealed" ? "disabled" : ""}>•••</button><div class="lab-tube"><button class="lab-collector ${state.labPhase === "opened" ? "next-target" : ""}" data-action="lab-extract" ${state.labPhase !== "opened" ? "disabled" : ""}>●●●</button></div></div><div class="transfer-arrow">→</div><button class="analyser ${state.labPhase} ${state.labPhase === "extracted" ? "next-target" : ""}" data-action="lab-insert" ${state.labPhase !== "extracted" ? "disabled" : ""}><span class="scanner-line"></span><strong>${state.labPhase === "scanning" ? c.labScanning : c.labStepInsert}</strong></button>${state.batchPhase ? `<div class="batch-machine ${batchDone ? "done" : "running"}"><span class="batch-scan"></span><strong>${batchDone ? c.allResults : c.batchRunning}</strong><div>${state.deployments.slice(1).map((site,index)=>`<article class="${state.results.some(item=>item.id===site)?"done":""}"><span>${state.results.some(item=>item.id===site)?"✓":"…"}</span><b>${locName(site)}</b><small>${index===0?c.batchOne:c.batchTwo}</small></article>`).join("")}</div></div>` : ""}</div><aside class="lab-instructions">${speechLine("lab",c.labTitle,"h2")}<p class="lab-coach">${c.labCoach}</p><ol><li class="${["opened","extracted","scanning","result"].includes(state.labPhase) ? "done" : "current"}"><span>1</span>${c.labStepOpen}</li><li class="${["extracted","scanning","result"].includes(state.labPhase) ? "done" : state.labPhase === "opened" ? "current" : ""}"><span>2</span>${c.labStepExtract}</li><li class="${["result"].includes(state.labPhase) ? "done" : ["extracted","scanning"].includes(state.labPhase) ? "current" : ""}"><span>3</span>${c.labStepInsert}</li></ol>${state.labPhase === "result" || result ? `<div class="printed-result"><small>${c.labResult}</small><strong>${locName(id)}</strong>${renderSignalBlocks(level)}<b>${signalText(level)}</b></div><div class="analysis-summary"><strong>${c.batchTitle}</strong><p>${c.batchExplain}</p></div>${!state.batchPhase ? `<button class="game-button primary next-target" data-action="batch-analysis">${c.batchAction} →</button>` : batchDone ? `<div class="success-banner">✓ ${c.allResults}</div><button class="game-button primary next-target" data-action="goto" data-scene="EVIDENCE">${c.toEvidence} →</button>` : `<div class="batch-wait">⏳ ${c.batchRunning}</div>`}` : ""}</aside></div></section>`;
   }
 
   function evidenceCard(item) {
@@ -278,38 +333,82 @@
   }
   function renderEvidence() {
     const c = copy(); const allPlaced = state.evidencePlaced.length >= 3;
-    return `<section class="evidence-world v6-evidence"><div class="evidence-map-wrap">${renderMapSites("evidence")}<h2>${c.evidenceTitle}</h2></div><aside class="evidence-tray ${allPlaced ? "is-ready" : ""} ${state.highestSelected ? "is-solved" : ""}"><div class="case-header"><span>🗂</span><div><small>${state.uiLocale==="en"?"CASE FILES":"調查檔案盤"}</small><p>${allPlaced ? c.evidenceReady : c.placeHint}</p></div></div><div class="signal-legend">▥ ${c.signalLegend}</div><div class="evidence-cards">${state.results.map(evidenceCard).join("")}</div>${allPlaced ? `<div class="compare-callout">${c.chooseHighest}</div><div class="magnet-choice next-target-group">${state.results.map(item => `<button data-action="select-highest" data-site="${item.id}" class="${state.highestSelected && item.id === "RIV" ? "chosen" : ""}"><span>${loc(item.id)?.icon}</span>${locName(item.id)}</button>`).join("")}</div>` : ""}${state.hint ? `<div class="coach-hint ${state.highestSelected?"good":""}" data-feedback>💡 ${state.hint}</div>` : ""}${state.highestSelected ? `<div class="known-unknown"><article><span>✓</span><div><small>${c.known}</small><strong>${c.knownText}</strong></div></article><article><span>?</span><div><small>${c.unknown}</small><strong>${c.unknownText}</strong></div></article></div><button class="game-button primary next-target" data-action="goto" data-scene="DECISION">${c.toDecision} →</button>` : ""}</aside></section>`;
+    return `<section class="evidence-world v6-evidence"><div class="evidence-map-wrap">${renderMapSites("evidence")}${speechLine("evidence",allPlaced ? c.chooseHighest : c.evidenceTitle,"h2")}</div><aside class="evidence-tray ${allPlaced ? "is-ready" : ""} ${state.highestSelected ? "is-solved" : ""}"><div class="case-header"><span>🗂</span><div><small>${state.uiLocale==="en"?"CASE FILES":"調查檔案盤"}</small><p>${allPlaced ? c.evidenceReady : c.placeHint}</p></div></div><div class="signal-legend">▥ ${c.signalLegend}</div><div class="evidence-cards">${state.results.map(evidenceCard).join("")}</div>${allPlaced ? `<div class="compare-callout">${c.chooseHighest}</div><div class="magnet-choice next-target-group">${state.results.map(item => `<button data-action="select-highest" data-site="${item.id}" class="${state.highestSelected && item.id === "RIV" ? "chosen" : ""}"><span>${loc(item.id)?.icon}</span>${locName(item.id)}</button>`).join("")}</div>` : ""}${state.hint ? `<div class="coach-hint ${state.highestSelected?"good":""}" data-feedback>💡 ${state.hint}</div>` : ""}${state.highestSelected ? `<div class="known-unknown"><article><span>✓</span><div><small>${c.known}</small><strong>${c.knownText}</strong></div></article><article><span>?</span><div><small>${c.unknown}</small><strong>${c.unknownText}</strong></div></article></div><button class="game-button primary next-target" data-action="goto" data-scene="DECISION">${c.toDecision} →</button>` : ""}</aside></section>`;
   }
 
   function renderDecision() {
     const c = copy(); const recommended = state.thirdSite === "HAR" ? c.decisionMoreHarbor : c.decisionMoreOffshore;
-    return `<section class="decision-world v6-decision"><div class="evidence-board"><h2>${c.decisionTitle}</h2><div class="mini-results">${state.results.map(item => `<article><span>${loc(item.id)?.icon}</span><strong>${locName(item.id)}</strong>${renderSignalBlocks(item.level)}<small>${signalText(item.level)}</small></article>`).join("")}</div><div class="known-unknown"><article><span>✓</span><div><small>${c.known}</small><strong>${c.knownText}</strong></div></article><article><span>?</span><div><small>${c.unknown}</small><strong>${c.unknownText}</strong></div></article></div></div><div class="plan-cards"><div class="plan-prompt">${state.uiLocale==="en"?"Choose the plan that keeps a fair comparison.":"三個方案都能收集資料；哪一個能保留公平比較？"}</div><div class="plan-choice-group next-target-group"><button data-action="choose-plan" data-value="declare" class="${state.decision==="declare"?"selected wrong":""}"><span>A</span><strong>${c.decisionDeclare}</strong></button><button data-action="choose-plan" data-value="more" class="${state.decision==="more"?"selected good":""}"><span>B</span><strong>${recommended}</strong></button><button data-action="choose-plan" data-value="stop" class="${state.decision==="stop"?"selected wrong":""}"><span>C</span><strong>${c.decisionStop}</strong></button></div>${state.feedback ? `<div class="coach-hint ${state.decision === "more" ? "good" : ""}" data-feedback>${state.feedback}</div>` : ""}${state.decision === "more" ? `<button class="game-button primary next-target" data-action="goto" data-scene="COMPLETE">${c.completeMission} →</button>` : ""}</div></section>`;
+    const ranked = state.priorityOrder || []; const rankingDone = ranked.length >= state.results.length;
+    const orderedResults = [...state.results].sort((a,b) => b.level - a.level || a.id.localeCompare(b.id));
+    const resultButtons = orderedResults.map((item,index) => {
+      const selectedIndex = ranked.indexOf(item.id); const selected = selectedIndex >= 0;
+      return `<button class="priority-result ${selected ? "ranked" : ""}" style="--pop:${index}" data-action="choose-priority" data-site="${item.id}" ${selected ? "disabled" : ""}><span class="priority-rank">${selected ? selectedIndex + 1 : "!"}</span><span class="priority-icon">${loc(item.id)?.icon}</span><strong>${locName(item.id)}</strong>${renderSignalBlocks(item.level)}<small>${signalText(item.level)}</small></button>`;
+    }).join("");
+    const rankingPanel = `<div class="priority-game"><div class="priority-radar"><div class="radar-ring r1"></div><div class="radar-ring r2"></div><div class="radar-sweep"></div>${resultButtons}</div><div class="priority-copy">${speechLine("priority-title",c.priorityTitle,"h2")}${speechLine("priority-prompt",c.priorityPrompt)}<div class="priority-progress">${format(c.priorityProgress,{n:ranked.length})}<span>${[0,1,2].map(i=>`<i class="${i<ranked.length?"done":""}">${i<ranked.length?"✓":i+1}</i>`).join("")}</span></div>${state.feedback ? `<div class="coach-hint ${state.feedback === c.priorityWrong ? "" : "good"}" data-feedback>${state.feedback}</div>` : ""}</div></div>`;
+    const planPanel = `<div class="evidence-board priority-summary"><h2>${c.priorityDone}</h2><div class="ranked-results">${ranked.map((id,index)=>{const item=state.results.find(result=>result.id===id);return `<article><b>${index+1}</b><span>${loc(id)?.icon}</span><strong>${locName(id)}</strong>${renderSignalBlocks(item?.level||1)}<small>${signalText(item?.level||1)}</small></article>`;}).join("")}</div><div class="known-unknown"><article><span>✓</span><div><small>${c.known}</small><strong>${c.knownText}</strong></div></article><article><span>?</span><div><small>${c.unknown}</small><strong>${c.unknownText}</strong></div></article></div></div><div class="plan-cards"><div class="plan-prompt speech-line" data-speech="plan">${c.followupTitle}</div><div class="plan-choice-group next-target-group"><button data-action="choose-plan" data-value="declare" class="${state.decision==="declare"?"selected wrong":""}"><span>A</span><strong>${c.decisionDeclare}</strong></button><button data-action="choose-plan" data-value="more" class="${state.decision==="more"?"selected good":""}"><span>B</span><strong>${recommended}</strong></button><button data-action="choose-plan" data-value="stop" class="${state.decision==="stop"?"selected wrong":""}"><span>C</span><strong>${c.decisionStop}</strong></button></div>${state.feedback ? `<div class="coach-hint ${state.decision === "more" ? "good" : ""}" data-feedback>${state.feedback}</div>` : ""}${state.decision === "more" ? `<button class="game-button primary next-target" data-action="goto" data-scene="COMPLETE">${c.completeMission} →</button>` : ""}</div>`;
+    return `<section class="decision-world v6-decision ${rankingDone ? "ranking-done" : "ranking-active"}">${rankingDone ? planPanel : rankingPanel}</section>`;
   }
 
   function renderComplete() {
     const c = copy();
-    return `<section class="complete-world v6-complete"><div class="real-device-photo"><div class="photo-frame"><img src="assets/artificial-mussel-real.jpg" alt="${c.realPhoto}"><span class="photo-callout cap-callout">${c.photoCap}</span><span class="photo-callout tube-callout">${c.photoTube}</span><span class="photo-callout collector-callout">${c.photoCollector}</span></div><b>${c.realPhoto}</b></div><div class="mission-complete"><span class="medal">★ ${c.completeMissionLabel}</span>${speechLine(0,c.completeTitle,"h1")}<div class="player-report"><small>${c.playerSpeaking}</small>${speechLine(1,c.completeLead,"strong")}</div><div class="takeaways"><article><span>1</span>${c.takeaway1}</article><article><span>2</span>${c.takeaway2}</article><article><span>3</span>${c.takeaway3}</article><article><span>4</span>${c.takeaway4}</article></div><div class="complete-actions"><button class="game-button secondary" data-action="open-science">${c.scienceBook}</button><button class="game-button primary" data-action="restart">${c.playAgain}</button></div></div></section>`;
+    return `<section class="complete-world v6-complete"><div class="real-device-photo"><div class="photo-frame"><img src="assets/artificial-mussel-real.jpg" alt="${c.realPhoto}"><span class="photo-callout cap-callout">${c.photoCap}</span><span class="photo-callout tube-callout">${c.photoTube}</span><span class="photo-callout collector-callout">${c.photoCollector}</span></div><b>${c.realPhoto}</b></div><div class="mission-complete"><span class="medal">★ ${c.completeMissionLabel}</span>${speechLine("complete-title",c.completeTitle,"h1")}<div class="player-report"><small>${c.playerSpeaking}</small>${speechLine("complete-lead",c.completeLead,"strong")}</div><div class="takeaways"><article><span>1</span>${c.takeaway1}</article><article><span>2</span>${c.takeaway2}</article><article><span>3</span>${c.takeaway3}</article><article><span>4</span>${c.takeaway4}</article></div><div class="complete-actions"><button class="game-button secondary" data-action="open-science">${c.scienceBook}</button><button class="game-button primary" data-action="restart">${c.playAgain}</button></div></div></section>`;
   }
 
   function narration() {
     const c = copy();
-    if (state.scene === "ALERT") return [c.alert1,c.alert2,c.alertQuestion];
+    if (state.scene === "ALERT") return state.radioAnswered ? [{key:"alert-1",text:c.alert1},{key:"alert-2",text:c.alert2},{key:"alert-3",text:c.alertQuestion}] : [];
+    if (state.scene === "WHY") return [{key:"why-title",text:c.whyTitle},{key:"why-intro",text:c.whyIntro},{key:"buoy-title",text:c.buoyRoleTitle},{key:"buoy-body",text:c.buoyRoleBody},{key:"mussel-title",text:c.musselRoleTitle},{key:"mussel-body",text:c.musselRoleBody},{key:"role-rule",text:c.roleRule}];
     if (state.scene === "LENS") {
-      if (!state.lensFound) return [c.lensHint];
+      if (!state.lensFound) return [{key:0,text:c.lensHint}];
       const file = knowledgeFiles()[Math.max(0,Math.min(3,state.knowledgePage))];
-      return [file.title,file.body,file.key];
+      return [{key:"knowledge-title",text:file.title},{key:"knowledge-body",text:file.body},{key:"knowledge-key",text:file.key}];
     }
-    if (state.scene === "BUILD") return [c.buildTitle,c.buildLead];
-    if (state.scene === "FLOW") return state.flowDone ? [c.flowDone] : [c.flowTitle];
-    if (state.scene === "DEPLOY") return [state.deployments.length === 0 ? c.deployRiver : state.deployments.length === 1 ? c.deployReserve : state.deployments.length === 2 ? c.deployThird : c.allDeployed];
-    if (state.scene === "TIME") return state.week >= 4 && !state.stormHandled ? [c.stormTitle,c.stormQuestion] : [c.timeTitle];
-    if (state.scene === "LAB") return [c.labTitle];
-    if (state.scene === "EVIDENCE") return [state.evidencePlaced.length >= 3 ? c.chooseHighest : c.evidenceTitle];
-    if (state.scene === "DECISION") return [c.decisionTitle];
-    if (state.scene === "COMPLETE") return [c.completeTitle,c.completeLead];
+    if (state.scene === "BUILD") return [{key:"build-title",text:c.buildTitle},{key:"build-lead",text:c.buildLead}];
+    if (state.scene === "FLOW") return state.flowDone ? [] : [{key:"flow-title",text:c.flowTitle},{key:"flow-water",text:c.flowWater},{key:"flow-capture",text:c.flowCapture},{key:"flow-wait",text:c.flowWait},{key:"flow-power",text:c.flowNoPower}];
+    if (state.scene === "DEPLOY") return [{key:"deploy",text:state.deployments.length === 0 ? c.deployRiver : state.deployments.length === 1 ? c.deployReserve : state.deployments.length === 2 ? c.deployThird : c.allDeployed}];
+    if (state.scene === "TIME") {
+      if (state.week >= 4 && !state.stormHandled) return [{key:"storm-title",text:c.stormTitle},{key:"storm-question",text:c.stormChoiceHint}];
+      return [{key:"time",text:c[`timeObservation${state.week}`] || c.timeObservation8}];
+    }
+    if (state.scene === "LAB") return [{key:"lab",text:c.labTitle}];
+    if (state.scene === "EVIDENCE") return [{key:"evidence",text:state.evidencePlaced.length >= 3 ? c.chooseHighest : c.evidenceTitle}];
+    if (state.scene === "DECISION") return state.priorityOrder.length >= state.results.length ? [{key:"plan",text:c.followupTitle}] : [{key:"priority-title",text:c.priorityTitle},{key:"priority-prompt",text:c.priorityPrompt}];
+    if (state.scene === "COMPLETE") return [{key:"complete-title",text:c.completeTitle},{key:"complete-lead",text:c.completeLead}];
     return [];
   }
   function clearSpeech() { document.querySelectorAll(".is-speaking").forEach(el => el.classList.remove("is-speaking")); }
+  function syncNarrationGuard() {
+    const shell = document.querySelector(".g3-shell"); if (!shell) return;
+    shell.classList.toggle("narration-active",narrationActive);
+    document.querySelectorAll("button[data-action]").forEach(button => {
+      const exempt = ["voice-toggle","voice-replay","home","back","skip-narration"].includes(button.dataset.action);
+      if (narrationActive && !exempt) {
+        if (!button.disabled) button.dataset.narrationDisabled = "true";
+        button.disabled = true;
+      } else if (button.dataset.narrationDisabled === "true") {
+        button.disabled = false; delete button.dataset.narrationDisabled;
+      }
+    });
+    document.querySelector(".speech-status")?.remove();
+    if (!narrationActive) return;
+    const status = document.createElement("div"); status.className = "speech-status";
+    status.innerHTML = `<span><i></i>${copy().speakingNow}</span>${speechCanSkip ? `<button data-action="skip-narration">${copy().skipSpeech}</button>` : ""}`;
+    shell.append(status);
+  }
+  function setNarrationGuard(active) {
+    narrationActive = active; speechCanSkip = false;
+    if (speechSkipTimer) clearTimeout(speechSkipTimer);
+    speechSkipTimer = null; syncNarrationGuard();
+    if (active) speechSkipTimer = setTimeout(() => { if (!narrationActive) return; speechCanSkip = true; syncNarrationGuard(); },2000);
+  }
+  function cancelSpeech(unlock = true) {
+    speechRun += 1;
+    if (speechFallbackTimer) clearTimeout(speechFallbackTimer);
+    speechFallbackTimer = null;
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    clearSpeech();
+    if (unlock) setNarrationGuard(false);
+  }
   function rememberSpeechVoices() {
     if (!("speechSynthesis" in window)) return [];
     const available = speechSynthesis.getVoices();
@@ -320,9 +419,6 @@
     const requested = locale.toLowerCase();
     const lang = voice => (voice.lang || "").toLowerCase().replace("_","-");
     const name = voice => (voice.name || "").toLowerCase();
-    const exact = voices.find(voice => lang(voice) === requested);
-    if (exact) return exact;
-
     // Cantonese must never fall back to a generic zh-* voice: on iPad that is
     // commonly Mandarin. Some engines label Cantonese as yue-HK instead.
     if (requested === "zh-hk") {
@@ -330,6 +426,8 @@
         voices.find(voice => /cantonese|粵語|粤语|sin[- ]?ji|hiumaan|hiugaai/.test(name(voice))) ||
         null;
     }
+    const exact = voices.find(voice => lang(voice) === requested);
+    if (exact) return exact;
     if (requested === "zh-cn") {
       return voices.find(voice => /^(?:cmn-cn|zh-sg)$/.test(lang(voice))) ||
         voices.find(voice => /mandarin|普通話|普通话|ting[- ]?ting/.test(name(voice))) ||
@@ -359,28 +457,40 @@
     });
   }
   async function speak(chunks = narration(), feedback = false) {
-    speechRun += 1; const run = speechRun;
-    if (!("speechSynthesis" in window)) return;
-    speechSynthesis.cancel(); clearSpeech();
-    if (state.voiceMuted || !chunks.length) return;
+    cancelSpeech(true); const run = speechRun;
+    const segments = chunks.map((chunk,index) => typeof chunk === "string" ? {key:index,text:chunk} : chunk).filter(segment => segment?.text);
+    if (!("speechSynthesis" in window) || state.voiceMuted || !segments.length) return;
+    if (!feedback) setNarrationGuard(true);
     const requestedLocale = state.voiceLocale;
     const voices = await waitForSpeechVoices(requestedLocale);
-    if (run !== speechRun || state.voiceMuted) return;
-    const selectedVoice = pickSpeechVoice(voices,requestedLocale); let index = 0;
+    if (run !== speechRun || state.voiceMuted) { if (!feedback) setNarrationGuard(false); return; }
+    const selectedVoice = pickSpeechVoice(voices,requestedLocale);
+    if (requestedLocale.toLowerCase() === "zh-hk" && !selectedVoice) {
+      setNarrationGuard(false);
+      const notice = document.createElement("div"); notice.className = "voice-notice"; notice.textContent = copy().voiceUnavailable;
+      document.querySelector(".g3-shell")?.append(notice); setTimeout(() => notice.remove(),4000);
+      return;
+    }
+    let index = 0;
     const next = () => {
-      if (run !== speechRun || index >= chunks.length) { clearSpeech(); return; }
+      if (run !== speechRun || index >= segments.length) { clearSpeech(); if (!feedback) setNarrationGuard(false); return; }
       clearSpeech();
-      const target = feedback ? document.querySelector("[data-feedback]") : document.querySelector(`[data-speech="${index}"]`) || document.querySelector(".deploy-drawer p, .evidence-tray p, h2");
+      const segment = segments[index];
+      const target = feedback ? document.querySelector("[data-feedback]") : document.querySelector(`[data-speech="${segment.key}"]`);
       target?.classList.add("is-speaking");
-      const u = new SpeechSynthesisUtterance(chunks[index]); u.lang = selectedVoice?.lang || requestedLocale; u.rate = state.uiLocale === "en" ? .96 : .88;
+      const u = new SpeechSynthesisUtterance(segment.text); u.lang = selectedVoice?.lang || requestedLocale; u.rate = state.voiceRate;
       u.voice = selectedVoice;
-      u.onend = u.onerror = () => { index += 1; next(); }; speechSynthesis.speak(u);
+      let finished = false;
+      const finish = () => { if (finished) return; finished = true; if (speechFallbackTimer) clearTimeout(speechFallbackTimer); speechFallbackTimer = null; index += 1; next(); };
+      u.onend = u.onerror = finish;
+      speechFallbackTimer = setTimeout(finish,Math.min(18000,Math.max(5500,segment.text.length * 190)));
+      try { speechSynthesis.speak(u); } catch (_) { finish(); }
     };
     next();
   }
   function speakFeedback(text) { speak([text], true); }
-  function go(scene, record = true) { if (!SCENES.includes(scene)) return; if (record && state.scene !== scene) state.history = [...state.history,state.scene].slice(-20); state.scene = scene; state.hint = ""; state.feedback = ""; persist(); render(); setTimeout(() => speak(),80); }
-  function back() { const history = [...state.history]; const previous = history.pop() || "HOME"; state.history = history; state.scene = previous; persist(); render(); }
+  function go(scene, record = true) { if (!SCENES.includes(scene)) return; cancelSpeech(true); if (record && state.scene !== scene) state.history = [...state.history,state.scene].slice(-20); state.scene = scene; state.hint = ""; state.feedback = ""; persist(); render(); setTimeout(() => speak(),100); }
+  function back() { cancelSpeech(true); const history = [...state.history]; const previous = history.pop() || "HOME"; state.history = history; state.scene = previous; persist(); render(); }
   function installPart(index) {
     const c = copy();
     if (index !== state.buildStep) { state.hint = c.wrongPart; persist(); render(); speakFeedback(state.hint); return; }
@@ -421,15 +531,19 @@
   app.addEventListener("change", event => {
     if (event.target.name === "ui-locale") { state.uiLocale = event.target.value; persist(); render(); }
     if (event.target.name === "voice-locale") { state.voiceLocale = event.target.value; persist(); }
+    if (event.target.name === "voice-rate") { state.voiceRate = Number(event.target.value) || 1; persist(); }
   });
   document.addEventListener("click", event => {
     const button = event.target.closest("[data-action]"); if (!button || button.disabled) return;
+    if (Date.now() < suppressClickUntil && button.dataset.action === "place-evidence") { event.preventDefault(); return; }
     const action = button.dataset.action; const c = copy();
-    if (action === "new-game") { state = freshState({uiLocale:state.uiLocale,voiceLocale:state.voiceLocale,voiceMuted:state.voiceMuted}); state.history=["HOME"]; state.scene="ALERT"; persist(); render(); speak(); }
-    if (action === "home") { state = freshState({uiLocale:state.uiLocale,voiceLocale:state.voiceLocale,voiceMuted:state.voiceMuted}); persist(); render(); if("speechSynthesis" in window)speechSynthesis.cancel(); }
+    if (action === "new-game") { cancelSpeech(true); state = freshState({uiLocale:state.uiLocale,voiceLocale:state.voiceLocale,voiceMuted:state.voiceMuted,voiceRate:state.voiceRate}); state.history=["HOME"]; state.scene="ALERT"; persist(); render(); }
+    if (action === "home") { cancelSpeech(true); state = freshState({uiLocale:state.uiLocale,voiceLocale:state.voiceLocale,voiceMuted:state.voiceMuted,voiceRate:state.voiceRate}); persist(); render(); }
     if (action === "goto") go(button.dataset.scene);
     if (action === "back") back();
-    if (action === "voice-toggle") { state.voiceMuted=!state.voiceMuted; persist(); render(); if(state.voiceMuted && "speechSynthesis" in window) speechSynthesis.cancel(); else speak(); }
+    if (action === "answer-radio") { state.radioAnswered=true;persist();render();setTimeout(()=>speak(),100); }
+    if (action === "skip-narration") cancelSpeech(true);
+    if (action === "voice-toggle") { state.voiceMuted=!state.voiceMuted; persist(); cancelSpeech(true); render(); if(!state.voiceMuted) speak(); }
     if (action === "voice-replay") speak();
     if (action === "lens" && !state.lensFound && !lensDrag) { state.lensFound=true; state.knowledgePage=0; state.knowledgeVisited=[0]; persist(); render(); speak(); }
     if (action === "knowledge-next") { state.knowledgePage=Math.min(3,state.knowledgePage+1);if(!state.knowledgeVisited.includes(state.knowledgePage))state.knowledgeVisited.push(state.knowledgePage);persist();render();speak(); }
@@ -447,22 +561,37 @@
     if (action === "batch-analysis") startBatchAnalysis();
     if (action === "place-evidence") placeEvidence(button.dataset.site);
     if (action === "select-highest") { if(button.dataset.site==="RIV"){state.highestSelected=true;state.hint=c.highestGood;}else state.hint=c.highestWrong;persist();render();speakFeedback(state.hint); }
+    if (action === "choose-priority") { const ordered=[...state.results].sort((a,b)=>b.level-a.level||a.id.localeCompare(b.id));const expected=ordered[state.priorityOrder.length]?.id;if(button.dataset.site===expected){state.priorityOrder.push(expected);state.feedback=state.priorityOrder.length>=ordered.length?c.priorityDone:c.priorityCorrect;}else state.feedback=c.priorityWrong;persist();render();speakFeedback(state.feedback); }
     if (action === "choose-plan") { const value=button.dataset.value;state.decision=value;state.feedback=value==="more"?c.decisionGood:value==="declare"?c.decisionWrongDeclare:c.decisionWrongStop;persist();render();speakFeedback(state.feedback); }
     if (action === "open-science") openScience();
     if (action === "close-science") scienceDialog.close();
-    if (action === "restart") { state=freshState({uiLocale:state.uiLocale,voiceLocale:state.voiceLocale,voiceMuted:state.voiceMuted});persist();render(); }
+    if (action === "restart") { cancelSpeech(true);state=freshState({uiLocale:state.uiLocale,voiceLocale:state.voiceLocale,voiceMuted:state.voiceMuted,voiceRate:state.voiceRate});persist();render(); }
   });
 
   app.addEventListener("pointerdown", event => {
+    const evidence = event.target.closest(".evidence-file:not(:disabled)");
+    if (evidence) {
+      event.preventDefault(); pointerDrag={x:event.clientX,y:event.clientY,element:evidence,site:evidence.dataset.site,pointerId:event.pointerId,moved:false};
+      evidence.classList.add("is-pointer-dragging"); evidence.setPointerCapture?.(event.pointerId); return;
+    }
     const lens = event.target.closest("[data-lens]"); if (!lens || state.lensFound) return;
     lensDrag = { x:event.clientX, y:event.clientY, element:lens, moved:false }; lens.setPointerCapture?.(event.pointerId);
   });
   app.addEventListener("pointermove", event => {
+    if (pointerDrag) {
+      event.preventDefault(); const dx=event.clientX-pointerDrag.x;const dy=event.clientY-pointerDrag.y;if(Math.abs(dx)+Math.abs(dy)>10)pointerDrag.moved=true;
+      pointerDrag.element.style.transform=`translate3d(${dx}px,${dy}px,0) rotate(0deg) scale(1.04)`; return;
+    }
     if (!lensDrag) return; const dx=event.clientX-lensDrag.x; const dy=event.clientY-lensDrag.y; if(Math.abs(dx)+Math.abs(dy)>12) lensDrag.moved=true; lensDrag.element.style.transform=`translate(${dx}px,${dy}px)`;
   });
   app.addEventListener("pointerup", event => {
+    if (pointerDrag) {
+      const drag=pointerDrag;pointerDrag=null;drag.element.releasePointerCapture?.(drag.pointerId);drag.element.classList.remove("is-pointer-dragging");drag.element.style.transform="";
+      if(drag.moved){suppressClickUntil=Date.now()+450;const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('[data-drop="evidence"]');if(target?.dataset.site===drag.site)placeEvidence(drag.site);} return;
+    }
     if (!lensDrag) return; const found=lensDrag.moved; lensDrag=null; if(found){state.lensFound=true;state.knowledgePage=0;state.knowledgeVisited=[0];persist();render();speak();}
   });
+  app.addEventListener("pointercancel", () => { if(!pointerDrag)return;pointerDrag.element.classList.remove("is-pointer-dragging");pointerDrag.element.style.transform="";pointerDrag=null; });
   app.addEventListener("dragstart", event => {
     const part=event.target.closest("[data-part]"); const evidence=event.target.closest(".evidence-file");
     dragPayload = part ? {type:"part",value:Number(part.dataset.part)} : evidence ? {type:"evidence",value:evidence.dataset.site} : null;
@@ -480,6 +609,6 @@
     rememberSpeechVoices();
     speechSynthesis.addEventListener("voiceschanged",rememberSpeechVoices);
   }
-  window.addEventListener("beforeunload",()=>{if(timer)clearTimeout(timer);if("speechSynthesis" in window)speechSynthesis.cancel();});
+  window.addEventListener("beforeunload",()=>{if(timer)clearTimeout(timer);cancelSpeech(true);});
   render();
 })();

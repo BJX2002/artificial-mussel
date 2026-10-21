@@ -38,3 +38,20 @@ html.mode-ipad,body.mode-ipad { width:100%; min-height:100%; overscroll-behavior
   .mode-ipad .knowledge-sample,.mode-ipad .tank,.mode-ipad .mission-map,.mode-ipad .evidence-map-wrap,.mode-ipad .time-scene,.mode-ipad .real-device-photo { min-height:54svh; }
   .mode-ipad .knowledge-card,.mode-ipad .flow-console,.mode-ipad .deploy-drawer,.mode-ipad .evidence-tray,.mode-ipad .time-dashboard,.mode-ipad .mission-complete { max-height:none; }
 }
+
+@media (orientation:landscape) {
+  .mode-ipad .why-world { grid-template-columns:42% 58%; height:calc(100svh - 104px); min-height:0; overflow:hidden; }
+  .mode-ipad .why-card { margin:.45rem .65rem; padding:.8rem; max-height:calc(100% - .9rem); overflow:hidden; }
+  .mode-ipad .why-card h1 { margin-bottom:.35rem; font-size:1.55rem; }.mode-ipad .why-card > p { margin:.25rem 0 .55rem; font-size:.72rem; line-height:1.35; }
+  .mode-ipad .role-compare { gap:.4rem; }.mode-ipad .role-tool { grid-template-columns:52px 1fr; gap:.4rem; padding:.5rem; }.mode-ipad .buoy-graphic,.mode-ipad .mussel-graphic { width:50px; height:50px; border-radius:14px; font-size:1.35rem; }
+  .mode-ipad .role-tool h2 { font-size:.82rem; }.mode-ipad .role-tool p { font-size:.6rem; line-height:1.3; }.mode-ipad .why-card > strong { margin:.45rem 0; padding:.45rem .55rem; font-size:.66rem; }.mode-ipad .why-card .game-button { min-height:42px; padding:.4rem .65rem; font-size:.72rem; }
+  .mode-ipad .real-mussel { top:16%; left:8%; transform:rotate(-12deg) scale(.72); }.mode-ipad .why-device { right:-5%; bottom:8%; transform:scale(.55); }
+
+  .mode-ipad .priority-game { grid-template-columns:55% 45%; height:100%; }.mode-ipad .priority-radar { min-height:0; }.mode-ipad .priority-copy { margin:.3rem; padding:.75rem; }
+  .mode-ipad .priority-copy h2 { font-size:1.35rem; }.mode-ipad .priority-copy > p { margin:.45rem 0; font-size:.68rem; line-height:1.35; }.mode-ipad .priority-progress { margin:.45rem 0; padding:.45rem .55rem; font-size:.7rem; }
+  .mode-ipad .priority-result { min-width:145px; width:34%; padding:.48rem; }.mode-ipad .priority-result .priority-rank { width:31px; height:31px; font-size:.85rem; }.mode-ipad .priority-result strong { font-size:.72rem; }.mode-ipad .priority-result small { font-size:.55rem; }
+  .mode-ipad .decision-world.ranking-done { grid-template-columns:46% 54%; }.mode-ipad .ranked-results { gap:.25rem; }.mode-ipad .ranked-results article { grid-template-columns:28px 26px 1fr auto; padding:.35rem; }.mode-ipad .ranked-results article > b { width:25px; height:25px; }.mode-ipad .ranked-results small { display:none; }
+  .mode-ipad .monitoring-buoy { transform:scale(.78); transform-origin:center; }.mode-ipad .quiet-monitor { font-size:.48rem; }
+  .mode-ipad .speech-status { right:12px; bottom:10px; padding:.45rem .55rem; font-size:.64rem; }
+  .mode-ipad .evidence-file { touch-action:none; }
+}
